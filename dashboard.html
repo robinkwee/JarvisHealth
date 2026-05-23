@@ -3,54 +3,163 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Food Tracker Dashboard</title>
+  <title>JarvisHealth - Food Tracking with Friends</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; padding: 20px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; padding: 20px; }
     .container { max-width: 900px; margin: 0 auto; }
-    h1 { color: #333; margin-bottom: 30px; }
-    .login-section { background: white; padding: 30px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .login-section input { padding: 10px; margin: 10px 0; width: 100%; border: 1px solid #ddd; border-radius: 4px; }
-    .login-section button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    .login-section button:hover { background: #0056b3; }
+
+    /* Header */
+    h1 { color: #333; margin-bottom: 10px; font-size: 32px; }
+    .subtitle { color: #666; margin-bottom: 30px; font-size: 16px; }
+
+    /* Sections */
+    .section { background: white; padding: 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+
+    /* Intro Section */
+    .intro-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: center; }
+    .intro-text h2 { color: #333; margin-bottom: 15px; font-size: 24px; }
+    .intro-text p { color: #666; line-height: 1.6; margin-bottom: 15px; }
+    .feature-list { list-style: none; margin: 20px 0; }
+    .feature-list li { color: #666; padding: 8px 0; padding-left: 30px; position: relative; }
+    .feature-list li:before { content: "✓"; position: absolute; left: 0; color: #28a745; font-weight: bold; }
+    .demo-box { background: #f0f8ff; padding: 20px; border-radius: 8px; border-left: 4px solid #007bff; }
+
+    /* Login Section */
+    .login-section { max-width: 400px; }
+    .login-section h2 { color: #333; margin-bottom: 20px; font-size: 24px; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; color: #333; font-weight: 500; margin-bottom: 8px; }
+    .form-group input { padding: 12px; width: 100%; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+    .form-group input:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.25); }
+    .form-group small { display: block; color: #999; margin-top: 5px; font-size: 13px; }
+    .btn { padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 500; transition: all 0.2s; }
+    .btn-primary { background: #007bff; color: white; width: 100%; }
+    .btn-primary:hover { background: #0056b3; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-secondary:hover { background: #5a6268; }
+    .btn-demo { background: #28a745; color: white; width: 100%; margin-top: 10px; }
+    .btn-demo:hover { background: #218838; }
+
+    /* Dashboard */
     .dashboard { display: none; }
     .dashboard.active { display: block; }
-    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
-    .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .stat-label { color: #666; font-size: 14px; margin-bottom: 5px; }
-    .stat-value { font-size: 32px; font-weight: bold; color: #333; }
-    .stat-remaining { font-size: 14px; color: #999; margin-top: 5px; }
-    .meals-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .dashboard-header h2 { color: #333; font-size: 28px; }
+
+    /* Stats Grid */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 30px; }
+    .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 8px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .stat-card.kcal { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .stat-card.protein { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .stat-card.carbs { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    .stat-card.fat { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    .stat-card.fiber { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
+    .stat-label { font-size: 12px; opacity: 0.9; margin-bottom: 5px; }
+    .stat-value { font-size: 28px; font-weight: bold; }
+    .stat-remaining { font-size: 12px; opacity: 0.85; margin-top: 8px; }
+
+    /* Meals Section */
+    .meals-section h3 { color: #333; margin-bottom: 20px; font-size: 20px; }
     .meal-item { border-bottom: 1px solid #eee; padding: 15px 0; }
     .meal-item:last-child { border-bottom: none; }
-    .meal-time { color: #666; font-size: 14px; }
-    .meal-desc { font-weight: 500; color: #333; margin: 5px 0; }
-    .meal-macros { display: flex; gap: 20px; font-size: 13px; color: #666; margin-top: 5px; }
+    .meal-time { color: #999; font-size: 13px; }
+    .meal-desc { font-weight: 500; color: #333; margin: 5px 0; font-size: 16px; }
+    .meal-macros { display: flex; gap: 20px; font-size: 13px; color: #666; margin-top: 8px; flex-wrap: wrap; }
+    .meal-macro { display: flex; gap: 5px; }
+    .meal-macro strong { color: #333; }
+
+    /* Empty State */
+    .empty-state { text-align: center; padding: 40px 20px; color: #999; }
+    .empty-state-icon { font-size: 48px; margin-bottom: 15px; }
+
+    /* Logout */
     .logout { margin-top: 30px; }
-    .logout button { padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    .loading { text-align: center; color: #666; padding: 20px; }
+    .logout button { padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    .logout button:hover { background: #c82333; }
+
+    /* Alert */
+    .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 15px; }
+    .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+    @media (max-width: 768px) {
+      .intro-grid { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .dashboard-header { flex-direction: column; align-items: flex-start; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>🍽️ Food Tracker</h1>
+    <!-- Intro Section -->
+    <div id="introSection">
+      <h1>🍽️ JarvisHealth</h1>
+      <p class="subtitle">Track your meals together with friends</p>
 
-    <!-- Login Section -->
-    <div class="login-section" id="loginSection">
-      <h2>Login</h2>
-      <input type="email" id="emailInput" placeholder="Enter your email">
-      <input type="number" id="userIdInput" placeholder="Enter your Telegram User ID">
-      <button onclick="login()">Login</button>
-      <p style="color: #666; margin-top: 10px; font-size: 14px;">
-        Get your Telegram User ID by messaging the bot with /whoami or /start
-      </p>
+      <div class="section">
+        <div class="intro-grid">
+          <div class="intro-text">
+            <h2>What is JarvisHealth?</h2>
+            <p>JarvisHealth is a group food tracking app that helps you and your friends log meals instantly via Telegram. Just send a photo of your food, and the AI automatically calculates calories and macros.</p>
+
+            <ul class="feature-list">
+              <li>Send food photos to Telegram group</li>
+              <li>Instant calorie & macro analysis</li>
+              <li>Track your daily targets</li>
+              <li>See your progress in real-time</li>
+              <li>Share the journey with friends</li>
+            </ul>
+
+            <p><strong>How it works:</strong></p>
+            <ol style="color: #666; margin-left: 20px; line-height: 1.8;">
+              <li>Join the JarvisHealth Telegram group</li>
+              <li>Register with your email & Telegram ID</li>
+              <li>Send a photo of your meal to the group</li>
+              <li>AI analyzes the meal instantly</li>
+              <li>Check your dashboard to see progress</li>
+            </ol>
+          </div>
+
+          <div class="demo-box">
+            <h3 style="color: #333; margin-bottom: 15px;">📊 Demo</h3>
+            <p style="color: #666; margin-bottom: 15px;">See what your dashboard will look like:</p>
+            <button class="btn btn-demo" onclick="showDemo()">Try Demo</button>
+            <p style="color: #999; font-size: 12px; margin-top: 15px; text-align: center;">Demo shows sample data for a typical day</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Login Form -->
+      <div class="section login-section">
+        <h2>Get Started</h2>
+
+        <div id="alertContainer"></div>
+
+        <div class="form-group">
+          <label for="emailInput">Email Address</label>
+          <input type="email" id="emailInput" placeholder="your@email.com">
+          <small>Must match your registered email</small>
+        </div>
+
+        <div class="form-group">
+          <label for="userIdInput">Telegram User ID</label>
+          <input type="number" id="userIdInput" placeholder="123456789">
+          <small>Get this by messaging the bot with /whoami</small>
+        </div>
+
+        <button class="btn btn-primary" onclick="login()">Login to Dashboard</button>
+      </div>
     </div>
 
     <!-- Dashboard Section -->
     <div class="dashboard" id="dashboard">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 id="userName" style="color: #333;"></h2>
+      <div class="dashboard-header">
+        <div>
+          <h2 id="userName"></h2>
+          <p style="color: #666; margin-top: 5px; font-size: 14px;" id="userDate"></p>
+        </div>
         <div class="logout">
           <button onclick="logout()">Logout</button>
         </div>
@@ -58,13 +167,13 @@
 
       <!-- Today's Stats -->
       <div class="stats" id="stats">
-        <div class="loading">Loading...</div>
+        <div style="grid-column: 1/-1; text-align: center; color: #999; padding: 20px;">Loading...</div>
       </div>
 
       <!-- Today's Meals -->
-      <div class="meals-section">
-        <h3 style="margin-bottom: 15px;">Today's Meals</h3>
-        <div id="mealsList" class="loading">Loading meals...</div>
+      <div class="section">
+        <h3>Today's Meals</h3>
+        <div id="mealsList" style="text-align: center; color: #999; padding: 20px;">Loading meals...</div>
       </div>
     </div>
   </div>
@@ -78,60 +187,103 @@
 
     let currentUser = null;
 
+    function showAlert(message, type = 'error') {
+      const alertDiv = document.getElementById('alertContainer');
+      const className = type === 'error' ? 'alert-error' : 'alert-success';
+      alertDiv.innerHTML = `<div class="alert ${className}">${message}</div>`;
+      setTimeout(() => alertDiv.innerHTML = '', 5000);
+    }
+
     async function login() {
-      const email = document.getElementById('emailInput').value;
+      const email = document.getElementById('emailInput').value.trim();
       const userId = parseInt(document.getElementById('userIdInput').value);
 
       if (!email || !userId) {
-        alert('Please enter email and Telegram User ID');
+        showAlert('Please enter both email and Telegram User ID');
         return;
       }
 
-      // Check if user exists
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('email', email)
-        .single();
+      try {
+        const { data: user, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('email', email)
+          .single();
 
-      if (error || !user) {
-        alert('User not found. Make sure you registered in the Telegram group first.');
-        return;
+        if (error || !user) {
+          showAlert('User not found. Make sure you registered in the Telegram group with this email and User ID.');
+          return;
+        }
+
+        currentUser = user;
+        showDashboard();
+      } catch (err) {
+        showAlert('Error logging in: ' + err.message);
       }
-
-      currentUser = user;
-      showDashboard();
     }
 
     function showDashboard() {
-      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('introSection').style.display = 'none';
       document.getElementById('dashboard').classList.add('active');
-      document.getElementById('userName').textContent = `Welcome, ${currentUser.name}!`;
+      document.getElementById('userName').textContent = `Welcome back, ${currentUser.name}! 👋`;
+
+      const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      document.getElementById('userDate').textContent = today;
+
       loadTodaysData();
+    }
+
+    function showDemo() {
+      // Demo user
+      currentUser = {
+        user_id: 999999,
+        name: 'Demo User',
+        kcal_target: 2550,
+        protein_target: 140,
+        carbs_target: 325,
+        fat_target: 75,
+        fiber_target: 35
+      };
+
+      // Demo meals
+      const demoMeals = [
+        { time: '08:30', description: 'Breakfast - Oatmeal with berries & almonds', calories: 380, protein_g: 12, carbs_g: 54, fat_g: 14, fiber_g: 8 },
+        { time: '12:45', description: 'Lunch - Chicken breast, brown rice, broccoli', calories: 520, protein_g: 45, carbs_g: 58, fat_g: 12, fiber_g: 7 },
+        { time: '15:30', description: 'Snack - Greek yogurt with granola', calories: 210, protein_g: 15, carbs_g: 28, fat_g: 4, fiber_g: 2 },
+        { time: '19:00', description: 'Dinner - Salmon, sweet potato, asparagus', calories: 650, protein_g: 52, carbs_g: 45, fat_g: 28, fiber_g: 8 }
+      ];
+
+      displayDashboard(demoMeals);
+      document.getElementById('introSection').style.display = 'none';
+      document.getElementById('dashboard').classList.add('active');
+      document.getElementById('userName').textContent = `Welcome, ${currentUser.name}! 👋 (Demo Mode)`;
+
+      const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      document.getElementById('userDate').textContent = `${today} • This is sample data`;
     }
 
     async function loadTodaysData() {
       const today = new Date().toISOString().split('T')[0];
 
-      // Get meals for today
-      const { data: meals, error } = await supabase
-        .from('meals')
-        .select('*')
-        .eq('user_id', currentUser.user_id)
-        .eq('date', today)
-        .order('time', { ascending: false });
+      try {
+        const { data: meals, error } = await supabase
+          .from('meals')
+          .select('*')
+          .eq('user_id', currentUser.user_id)
+          .eq('date', today)
+          .order('time', { ascending: false });
 
-      if (error) {
-        console.error('Error loading meals:', error);
-        return;
+        if (error) throw error;
+        displayDashboard(meals);
+      } catch (err) {
+        showAlert('Error loading meals: ' + err.message);
       }
+    }
 
+    function displayDashboard(meals) {
       // Calculate totals
-      const totals = {
-        calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0
-      };
-
+      const totals = { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 };
       meals.forEach(meal => {
         totals.calories += meal.calories || 0;
         totals.protein_g += meal.protein_g || 0;
@@ -140,54 +292,67 @@
         totals.fiber_g += meal.fiber_g || 0;
       });
 
-      // Round to 1 decimal
       Object.keys(totals).forEach(k => {
         totals[k] = Math.round(totals[k] * 10) / 10;
       });
 
-      // Display stats
+      // Display stats with color coding
+      const remaining = {
+        kcal: currentUser.kcal_target - totals.calories,
+        protein: currentUser.protein_target - totals.protein_g,
+        carbs: currentUser.carbs_target - totals.carbs_g,
+        fat: currentUser.fat_target - totals.fat_g,
+        fiber: currentUser.fiber_target - totals.fiber_g
+      };
+
       const statsHtml = `
-        <div class="stat-card">
+        <div class="stat-card kcal">
           <div class="stat-label">Calories</div>
           <div class="stat-value">${totals.calories}</div>
-          <div class="stat-remaining">${currentUser.kcal_target - totals.calories} remaining</div>
+          <div class="stat-remaining">${Math.max(0, remaining.kcal)} remaining</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Protein (g)</div>
-          <div class="stat-value">${totals.protein_g}</div>
-          <div class="stat-remaining">${currentUser.protein_target - totals.protein_g}g remaining</div>
+        <div class="stat-card protein">
+          <div class="stat-label">Protein</div>
+          <div class="stat-value">${totals.protein_g}g</div>
+          <div class="stat-remaining">${Math.max(0, remaining.protein)}g remaining</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Carbs (g)</div>
-          <div class="stat-value">${totals.carbs_g}</div>
-          <div class="stat-remaining">${currentUser.carbs_target - totals.carbs_g}g remaining</div>
+        <div class="stat-card carbs">
+          <div class="stat-label">Carbs</div>
+          <div class="stat-value">${totals.carbs_g}g</div>
+          <div class="stat-remaining">${Math.max(0, remaining.carbs)}g remaining</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Fat (g)</div>
-          <div class="stat-value">${totals.fat_g}</div>
-          <div class="stat-remaining">${currentUser.fat_target - totals.fat_g}g remaining</div>
+        <div class="stat-card fat">
+          <div class="stat-label">Fat</div>
+          <div class="stat-value">${totals.fat_g}g</div>
+          <div class="stat-remaining">${Math.max(0, remaining.fat)}g remaining</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Fiber (g)</div>
-          <div class="stat-value">${totals.fiber_g}</div>
-          <div class="stat-remaining">${currentUser.fiber_target - totals.fiber_g}g remaining</div>
+        <div class="stat-card fiber">
+          <div class="stat-label">Fiber</div>
+          <div class="stat-value">${totals.fiber_g}g</div>
+          <div class="stat-remaining">${Math.max(0, remaining.fiber)}g remaining</div>
         </div>
       `;
       document.getElementById('stats').innerHTML = statsHtml;
 
       // Display meals
       if (meals.length === 0) {
-        document.getElementById('mealsList').innerHTML = '<p style="color: #999;">No meals logged yet</p>';
+        document.getElementById('mealsList').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📸</div>
+            <p>No meals logged yet today</p>
+            <p style="font-size: 13px; margin-top: 10px;">Send a photo to the Telegram group to get started!</p>
+          </div>
+        `;
       } else {
         const mealsHtml = meals.map(meal => `
           <div class="meal-item">
-            <div class="meal-time">${meal.time}</div>
+            <div class="meal-time">⏰ ${meal.time}</div>
             <div class="meal-desc">${meal.description}</div>
             <div class="meal-macros">
-              <span>${meal.calories} cal</span>
-              <span>${meal.protein_g}g protein</span>
-              <span>${meal.carbs_g}g carbs</span>
-              <span>${meal.fat_g}g fat</span>
+              <div class="meal-macro"><strong>${meal.calories}</strong> cal</div>
+              <div class="meal-macro"><strong>${meal.protein_g}g</strong> protein</div>
+              <div class="meal-macro"><strong>${meal.carbs_g}g</strong> carbs</div>
+              <div class="meal-macro"><strong>${meal.fat_g}g</strong> fat</div>
             </div>
           </div>
         `).join('');
@@ -197,10 +362,11 @@
 
     function logout() {
       currentUser = null;
-      document.getElementById('loginSection').style.display = 'block';
+      document.getElementById('introSection').style.display = 'block';
       document.getElementById('dashboard').classList.remove('active');
       document.getElementById('emailInput').value = '';
       document.getElementById('userIdInput').value = '';
+      document.getElementById('alertContainer').innerHTML = '';
     }
   </script>
 </body>
