@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Database } from "bun:sqlite";
 
-const BOT_TOKEN = process.env.BOT_TOKEN || "8800575919:AAH7j-2OH7RM0ID0506mcosPEk6efWgdLcI";
+const BOT_TOKEN = process.env.BOT_TOKEN!;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY!;
 const SHEETS_WEBHOOK = process.env.SHEETS_WEBHOOK || ""; // Google Apps Script URL (optional)
 
@@ -62,7 +62,7 @@ function alreadyLogged(photoMsgId: number): boolean {
 }
 
 // Pending confirmations: msg_id -> macro data
-const pending = new Map<number, MacroEstimate & { photoMsgId: number }>();
+const pending = new Map<number, MacroEstimate & { photoMsgId: number; userId: number }>();
 
 interface MacroEstimate {
   description: string;
@@ -213,6 +213,55 @@ function formatDailyTotal(chatId: number): string {
     `🌿 Fiber: ${Math.round(t.fiber)}g / ${TARGETS.fiber}g`;
 }
 
+function formatDailyTotalForUser(chatId: number, user: any): string {
+  const today = new Date().toISOString().split("T")[0];
+  const t = getDailyTotals(chatId, today);
+  if (!t || !t.meals) return "No meals logged today yet.";
+
+  const targets = user
+    ? { calories: user.kcal_target, protein: user.protein_target, carbs: user.carbs_target, fat: user.fat_target, fiber: user.fiber_target }
+    : TARGETS;
+
+  const calPct = Math.round((t.calories / targets.calories) * 100);
+  return `*Today's Totals* (${t.meals} meal${t.meals !== 1 ? "s" : ""})\n\n` +
+    `🔥 Calories: ${Math.round(t.calories)} / ${targets.calories} kcal (${calPct}%)\n` +
+    `${progressBar(t.calories, targets.calories)}\n\n` +
+    `💪 Protein: ${Math.round(t.protein)}g / ${targets.protein}g\n` +
+    `🍞 Carbs: ${Math.round(t.carbs)}g / ${targets.carbs}g\n` +
+    `🥑 Fat: ${Math.round(t.fat)}g / ${targets.fat}g\n` +
+    `🌿 Fiber: ${Math.round(t.fiber)}g / ${targets.fiber}g`;
+}
+
+async function logToSupabase(userId: number, estimate: MacroEstimate, photoMsgId: number) {
+  const now = new Date();
+  const date = now.toISOString().split("T")[0];
+  const time = now.toTimeString().split(" ")[0];
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/meals`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        date,
+        time,
+        description: estimate.description,
+        calories: estimate.calories,
+        protein_g: estimate.protein_g,
+        carbs_g: estimate.carbs_g,
+        fat_g: estimate.fat_g,
+        fiber_g: estimate.fiber_g,
+        photo_msg_id: photoMsgId,
+      }),
+    });
+  } catch (e) {
+    console.error("Supabase meal write failed:", e);
+  }
+}
+
 // --- Log to DB + optional Sheets webhook ---
 function logMeal(chatId: number, estimate: MacroEstimate, photoMsgId: number) {
   const now = new Date();
@@ -239,7 +288,7 @@ function logMeal(chatId: number, estimate: MacroEstimate, photoMsgId: number) {
 }
 
 // --- Message handlers ---
-async function handlePhoto(chatId: number, msgId: number, photos: Array<{ file_id: string; width: number }>) {
+async function handlePhoto(chatId: number, msgId: number, photos: Array<{ file_id: string; width: number }>, userId: number) {
   await sendMessage(chatId, "🔍 Analyzing your food...");
 
   const largest = photos.reduce((a, b) => (a.width > b.width ? a : b));
@@ -262,8 +311,8 @@ async function handlePhoto(chatId: number, msgId: number, photos: Array<{ file_i
   if (estimate.notes) text += `\n_Note: ${estimate.notes}_\n`;
   text += `\nLog this?`;
 
-  // Store pending confirmation
-  pending.set(msgId, { ...estimate, photoMsgId: msgId });
+  // Store pending confirmation (include userId so callback can write to Supabase)
+  pending.set(msgId, { ...estimate, photoMsgId: msgId, userId });
 
   const replyMarkup = {
     inline_keyboard: [[
@@ -294,8 +343,12 @@ async function handleCallbackQuery(callbackQueryId: string, chatId: number, data
       return;
     }
     logMeal(chatId, estimate, estimate.photoMsgId);
+    // Fire-and-forget: write to Supabase without blocking the reply
+    logToSupabase(estimate.userId, estimate, estimate.photoMsgId).catch(console.error);
     pending.delete(msgId);
-    const totals = formatDailyTotal(chatId);
+    // Use user's personalized targets from Supabase for the totals message
+    const user = await getRegisteredUser(estimate.userId);
+    const totals = formatDailyTotalForUser(chatId, user);
     await sendMessage(chatId, `✅ Logged!\n\n${totals}`);
   } else if (action === "edit" && estimate) {
     await sendMessage(chatId, `✏️ *Edit macros for: ${estimate.description}*\n\nReply with corrections, e.g.:\n• \`calories 450\`\n• \`protein 35g\`\n• \`chicken breast 200g\`\n• \`all: 500 cal, 40p, 30c, 15f\``);
@@ -448,7 +501,7 @@ async function poll() {
               `Once registered, send your food photo again!`
             );
           } else {
-            await handlePhoto(chatId, msg.message_id, msg.photo);
+            await handlePhoto(chatId, msg.message_id, msg.photo, userId!);
           }
         } else if (msg.text) {
           await handleText(chatId, msg.text, userId);

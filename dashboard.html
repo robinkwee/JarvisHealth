@@ -378,9 +378,17 @@
     });
   }
 
-  // Auto-play on load and init Supabase
+  // Auto-play on load, restore session, init Supabase
   window.addEventListener('load', () => {
     initSupabase();
+    const saved = localStorage.getItem('jh_user');
+    if (saved) {
+      try {
+        currentUser = JSON.parse(saved);
+        showDashboard();
+        return;
+      } catch(e) { localStorage.removeItem('jh_user'); }
+    }
     setTimeout(runDemo, 800);
   });
 
@@ -468,7 +476,7 @@
 
       setRegBtn('success');
       showAlert('You can now send food photos to the Telegram group.', 'success');
-      setTimeout(() => { currentUser = user; showDashboard(); }, 2000);
+      setTimeout(() => { currentUser = user; localStorage.setItem('jh_user', JSON.stringify(user)); showDashboard(); }, 2000);
     } catch (e) {
       showAlert('Registration failed: ' + (e.message || 'unexpected error'));
       setRegBtn('idle');
@@ -482,11 +490,21 @@
     if (!supabase) { initSupabase(); }
     if (!supabase) { showAlert('Connection error. Please refresh the page.'); return; }
 
+    const btn = document.querySelector('#loginForm .btn-primary');
+    btn.disabled = true;
+    btn.textContent = 'Logging in…';
+
     const { data: user, error } = await supabase
       .from('users').select('*').eq('user_id', userId).eq('email', email).single();
 
-    if (error || !user) { showAlert('User not found. Make sure you registered in the Telegram group.'); return; }
+    if (error || !user) {
+      btn.disabled = false;
+      btn.textContent = 'Login';
+      showAlert('User not found. Make sure you registered in the Telegram group.');
+      return;
+    }
     currentUser = user;
+    localStorage.setItem('jh_user', JSON.stringify(user));
     showDashboard();
   }
 
@@ -537,10 +555,12 @@
 
   function logout() {
     currentUser = null;
+    localStorage.removeItem('jh_user');
     document.getElementById('introSection').style.display = 'block';
     document.getElementById('dashboard').classList.remove('active');
     document.getElementById('emailInput').value = '';
     document.getElementById('userIdInput').value = '';
+    setTimeout(runDemo, 800);
   }
 </script>
 </body>
