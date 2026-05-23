@@ -83,6 +83,7 @@
     .btn-primary:hover { background: #0056b3; }
     .alert { padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; font-size: 14px; }
     .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
 
     /* Dashboard */
     .dashboard { display: none; }
@@ -170,21 +171,59 @@
       </div>
     </div>
 
-    <!-- Login -->
+    <!-- Register / Login tabs -->
     <div class="section login-section">
-      <h2>Login to your dashboard</h2>
+      <div style="display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid #eee;">
+        <button id="tabRegister" onclick="switchTab('register')" style="flex:1;padding:10px;border:none;background:none;font-size:15px;font-weight:600;color:#007bff;border-bottom:2px solid #007bff;margin-bottom:-2px;cursor:pointer;">New? Register</button>
+        <button id="tabLogin" onclick="switchTab('login')" style="flex:1;padding:10px;border:none;background:none;font-size:15px;color:#999;cursor:pointer;">Already registered? Login</button>
+      </div>
+
       <div id="alertContainer"></div>
-      <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" id="emailInput" placeholder="your@email.com">
-        <small>Must match your registered email</small>
+
+      <!-- Register form -->
+      <div id="registerForm">
+        <p style="color:#555;margin-bottom:18px;font-size:14px;line-height:1.6;">
+          <strong>Step 1:</strong> Message the Telegram bot with <code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;">/start</code> — it will reply with your User ID.<br>
+          <strong>Step 2:</strong> Fill in this form to create your account.
+        </p>
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="regName" placeholder="Jane Smith">
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="regEmail" placeholder="jane@email.com">
+        </div>
+        <div class="form-group">
+          <label>Telegram User ID</label>
+          <input type="number" id="regUserId" placeholder="123456789">
+          <small>Send <strong>/start</strong> or <strong>/whoami</strong> to the bot — it replies with your ID</small>
+        </div>
+        <details style="margin-bottom:16px;">
+          <summary style="color:#666;font-size:13px;cursor:pointer;">Optional: set custom calorie targets</summary>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+            <div class="form-group"><label style="font-size:13px;">Calories (kcal)</label><input type="number" id="regKcal" placeholder="2550"></div>
+            <div class="form-group"><label style="font-size:13px;">Protein (g)</label><input type="number" id="regProtein" placeholder="140"></div>
+            <div class="form-group"><label style="font-size:13px;">Carbs (g)</label><input type="number" id="regCarbs" placeholder="325"></div>
+            <div class="form-group"><label style="font-size:13px;">Fat (g)</label><input type="number" id="regFat" placeholder="75"></div>
+          </div>
+        </details>
+        <button class="btn-primary" onclick="register()">Create Account</button>
       </div>
-      <div class="form-group">
-        <label>Telegram User ID</label>
-        <input type="number" id="userIdInput" placeholder="123456789">
-        <small>Get this by sending /start to the bot in Telegram</small>
+
+      <!-- Login form -->
+      <div id="loginForm" style="display:none;">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="emailInput" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label>Telegram User ID</label>
+          <input type="number" id="userIdInput" placeholder="123456789">
+          <small>Don't know your ID? Send <strong>/whoami</strong> to the bot</small>
+        </div>
+        <button class="btn-primary" onclick="login()">Login</button>
       </div>
-      <button class="btn-primary" onclick="login()">Login</button>
     </div>
   </div>
 
@@ -318,9 +357,51 @@
   });
 
   // ---------- Auth ----------
-  function showAlert(msg) {
-    document.getElementById('alertContainer').innerHTML = `<div class="alert alert-error">${msg}</div>`;
-    setTimeout(() => document.getElementById('alertContainer').innerHTML = '', 5000);
+  function showAlert(msg, type = 'error') {
+    const cls = type === 'success' ? 'alert-success' : 'alert-error';
+    document.getElementById('alertContainer').innerHTML = `<div class="alert ${cls}">${msg}</div>`;
+    if (type !== 'success') setTimeout(() => document.getElementById('alertContainer').innerHTML = '', 6000);
+  }
+
+  function switchTab(tab) {
+    const isRegister = tab === 'register';
+    document.getElementById('registerForm').style.display = isRegister ? 'block' : 'none';
+    document.getElementById('loginForm').style.display = isRegister ? 'none' : 'block';
+    document.getElementById('tabRegister').style.cssText = isRegister
+      ? 'flex:1;padding:10px;border:none;background:none;font-size:15px;font-weight:600;color:#007bff;border-bottom:2px solid #007bff;margin-bottom:-2px;cursor:pointer;'
+      : 'flex:1;padding:10px;border:none;background:none;font-size:15px;color:#999;cursor:pointer;';
+    document.getElementById('tabLogin').style.cssText = isRegister
+      ? 'flex:1;padding:10px;border:none;background:none;font-size:15px;color:#999;cursor:pointer;'
+      : 'flex:1;padding:10px;border:none;background:none;font-size:15px;font-weight:600;color:#007bff;border-bottom:2px solid #007bff;margin-bottom:-2px;cursor:pointer;';
+    document.getElementById('alertContainer').innerHTML = '';
+  }
+
+  async function register() {
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const userId = parseInt(document.getElementById('regUserId').value);
+    if (!name || !email || !userId) { showAlert('Name, email, and Telegram User ID are required'); return; }
+    if (!supabase) { initSupabase(); }
+    if (!supabase) { showAlert('Connection error. Please refresh.'); return; }
+
+    // Check if already registered
+    const { data: existing } = await supabase.from('users').select('id').eq('user_id', userId).single();
+    if (existing) { showAlert('This Telegram User ID is already registered. Use the Login tab.'); return; }
+
+    const { data: user, error } = await supabase.from('users').insert({
+      user_id: userId,
+      name,
+      email,
+      kcal_target: parseInt(document.getElementById('regKcal').value) || 2550,
+      protein_target: parseInt(document.getElementById('regProtein').value) || 140,
+      carbs_target: parseInt(document.getElementById('regCarbs').value) || 325,
+      fat_target: parseInt(document.getElementById('regFat').value) || 75,
+      fiber_target: 35,
+    }).select().single();
+
+    if (error) { showAlert('Registration failed: ' + error.message); return; }
+    showAlert('✅ Account created! You can now send food photos to the Telegram group.', 'success');
+    setTimeout(() => { currentUser = user; showDashboard(); }, 1500);
   }
 
   async function login() {

@@ -296,8 +296,27 @@ async function handleCallbackQuery(callbackQueryId: string, chatId: number, data
   }
 }
 
-async function handleText(chatId: number, text: string) {
+async function handleText(chatId: number, text: string, userId?: number) {
   const lower = text.trim().toLowerCase();
+
+  if (lower === "/start") {
+    await sendMessage(chatId,
+      `👋 *Welcome to JarvisHealth!*\n\n` +
+      `Your Telegram User ID is: \`${userId}\`\n\n` +
+      `To get started:\n` +
+      `1. Copy your User ID above\n` +
+      `2. Visit the dashboard to register: ${process.env.DASHBOARD_URL || "https://your-dashboard-url.com"}\n` +
+      `3. Enter your name, email, and this User ID\n` +
+      `4. Then send food photos here to start tracking!\n\n` +
+      `Type /help for all commands.`
+    );
+    return;
+  }
+
+  if (lower === "/whoami") {
+    await sendMessage(chatId, `Your Telegram User ID is: \`${userId}\``);
+    return;
+  }
 
   if (lower === "/today" || lower === "/t") {
     await sendMessage(chatId, formatDailyTotal(chatId));
@@ -306,10 +325,12 @@ async function handleText(chatId: number, text: string) {
 
   if (lower === "/help") {
     await sendMessage(chatId,
-      "*Calorie Tracker*\n\n" +
-      "📸 Send a food photo → get macro estimate\n" +
+      "*JarvisHealth*\n\n" +
+      "📸 Send a food photo → instant macro analysis\n" +
       "✅ Tap Log it to save\n\n" +
       "Commands:\n" +
+      "/start — welcome + your Telegram User ID\n" +
+      "/whoami — show your Telegram User ID\n" +
       "/today — today's totals\n" +
       "/targets — view daily targets\n" +
       `/set calories 1800 — update a target\n` +
@@ -408,10 +429,11 @@ async function poll() {
         const chatId = msg.chat.id;
         if (!ALLOWED_CHAT_IDS.has(chatId)) continue;
 
+        const userId = msg.from?.id;
         if (msg.photo) {
           await handlePhoto(chatId, msg.message_id, msg.photo);
         } else if (msg.text) {
-          await handleText(chatId, msg.text);
+          await handleText(chatId, msg.text, userId);
         }
       }
     } catch (err) {
