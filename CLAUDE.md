@@ -34,7 +34,7 @@ When friends send food photos to the group, `user_id` is extracted from the mess
 When a Telegram message arrives with an `image_path` attribute (photo from user):
 1. Read the image file at the given path
 2. Analyze the food: estimate description, calories, protein_g, carbs_g, fat_g, fiber_g
-3. Get today's date (YYYY-MM-DD) and current time (HH:MM:SS)
+3. Get today's local date and time via bash: `date +%Y-%m-%d` and `date +%H:%M:%S` — never use toISOString() which returns UTC and will mismatch the dashboard
 4. Extract `user_id` from the message metadata
 5. Query Supabase for user's targets: `GET $SUPABASE_URL/rest/v1/users?user_id=eq.<user_id>` (default: KCal 2550, Protein 140g, Carbs 325g, Fat 75g, Fiber 35g)
 6. Start async POST to Supabase meals table (don't wait):

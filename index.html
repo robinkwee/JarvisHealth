@@ -553,7 +553,10 @@
       <div class="dash-greeting" id="dash-name">Good morning</div>
       <div class="dash-date" id="dash-date"></div>
     </div>
-    <button class="btn-logout" onclick="doLogout()">Sign out</button>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="btn-logout" id="refresh-btn" onclick="refreshDashboard()" style="color:var(--muted);">↻ Refresh</button>
+      <button class="btn-logout" onclick="doLogout()">Sign out</button>
+    </div>
   </div>
 
   <div class="chart-section">
@@ -760,24 +763,20 @@ window.doLogin = async function() {
 
 // ── Logout ──────────────────────────────────────────────────────────────────
 window.doLogout = function() {
+  clearInterval(_refreshTimer);
   clearSession();
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('landing').style.display = '';
 };
 
 // ── Dashboard ──────────────────────────────────────────────────────────────
-async function showDashboard() {
+var _refreshTimer = null;
+
+async function loadDashboardData() {
   if (!currentUser) return;
-  document.getElementById('landing').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
-
   var u = currentUser;
-  document.getElementById('dash-name').textContent = getGreeting(u.name);
-  document.getElementById('dash-date').textContent = formatDate(new Date());
-
   var today = todayStr();
   var weekStart = dateMinusDays(6);
-
   try {
     var [todayMeals, weekMeals] = await Promise.all([
       sbGet('meals?user_id=eq.' + u.user_id + '&date=eq.' + today + '&order=time.asc'),
@@ -789,6 +788,30 @@ async function showDashboard() {
     renderDashboard([], u);
     renderChart([], u);
   }
+}
+
+window.refreshDashboard = async function() {
+  var btn = document.getElementById('refresh-btn');
+  btn.textContent = '↻ Refreshing…';
+  btn.disabled = true;
+  await loadDashboardData();
+  btn.textContent = '↻ Refresh';
+  btn.disabled = false;
+};
+
+async function showDashboard() {
+  if (!currentUser) return;
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+
+  var u = currentUser;
+  document.getElementById('dash-name').textContent = getGreeting(u.name);
+  document.getElementById('dash-date').textContent = formatDate(new Date());
+
+  await loadDashboardData();
+
+  clearInterval(_refreshTimer);
+  _refreshTimer = setInterval(loadDashboardData, 30000);
 }
 
 function renderDashboard(meals, u) {
