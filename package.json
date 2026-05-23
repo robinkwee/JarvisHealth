@@ -1,0 +1,19 @@
+{
+  "name": "calorie-bot",
+  "module": "bot.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun run bot.ts",
+    "dev": "bun --hot run bot.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.98.0"
+  }
+}
