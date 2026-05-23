@@ -769,7 +769,7 @@ window.doLogout = function() {
 async function showDashboard() {
   if (!currentUser) return;
   document.getElementById('landing').style.display = 'none';
-  document.getElementById('dashboard').style.display = '';
+  document.getElementById('dashboard').style.display = 'block';
 
   var u = currentUser;
   document.getElementById('dash-name').textContent = getGreeting(u.name);
@@ -864,15 +864,15 @@ function renderChart(meals, u) {
   var canvas = document.getElementById('calorie-chart');
   var dpr = window.devicePixelRatio || 1;
   var rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width  = rect.width  * dpr;
-  canvas.height = 200 * dpr;
-  canvas.style.width  = rect.width + 'px';
-  canvas.style.height = '200px';
+  var W = rect.width || canvas.parentElement.offsetWidth || 600;
+  var H = 200;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
 
   var ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
-
-  var W = rect.width, H = 200;
   var padL = 44, padR = 16, padT = 16, padB = 32;
   var chartW = W - padL - padR;
   var chartH = H - padT - padB;
