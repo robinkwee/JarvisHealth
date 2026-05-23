@@ -392,6 +392,40 @@
     .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     .chart-wrap { position: relative; height: 200px; }
 
+    /* ── Dashboard nav ── */
+    .dash-nav {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 5px;
+    }
+    .dash-nav-link {
+      flex: 1;
+      text-align: center;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .dash-nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .dash-nav-link.active { background: var(--accent); color: white; }
+
+    /* ── Placeholder sections ── */
+    .section-placeholder {
+      text-align: center;
+      padding: 80px 40px;
+      color: var(--muted);
+    }
+    .section-placeholder .placeholder-icon { font-size: 48px; margin-bottom: 16px; }
+    .section-placeholder h3 { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .section-placeholder p { font-size: 14px; line-height: 1.7; max-width: 360px; margin: 0 auto; }
+
     /* ── Footer ── */
     footer { text-align: center; padding: 40px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
 
@@ -559,54 +593,91 @@
     </div>
   </div>
 
-  <div class="chart-section">
-    <div class="chart-header">
-      <div class="chart-title">Calories this week</div>
-      <div class="chart-legend">
-        <span><span class="legend-dot" style="background:var(--accent)"></span>Logged</span>
-        <span><span class="legend-dot" style="background:rgba(239,68,68,0.6);border-radius:2px;height:2px;"></span>Target</span>
+  <nav class="dash-nav">
+    <a href="#today" class="dash-nav-link" data-section="today">Today</a>
+    <a href="#goals" class="dash-nav-link" data-section="goals">Goals</a>
+    <a href="#friends" class="dash-nav-link" data-section="friends">Friends</a>
+    <a href="#settings" class="dash-nav-link" data-section="settings">Settings</a>
+  </nav>
+
+  <!-- Today section -->
+  <div id="section-today">
+    <div class="chart-section">
+      <div class="chart-header">
+        <div class="chart-title">Calories this week</div>
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:var(--accent)"></span>Logged</span>
+          <span><span class="legend-dot" style="background:rgba(239,68,68,0.6);border-radius:2px;height:2px;"></span>Target</span>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="calorie-chart"></canvas></div>
+    </div>
+
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Calories</div>
+        <div class="stat-value" id="s-kcal">—</div>
+        <div class="stat-max" id="s-kcal-max"></div>
+        <div class="stat-bar"><div class="stat-fill fill-calories" id="b-kcal" style="width:0%"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Protein</div>
+        <div class="stat-value" id="s-protein">—</div>
+        <div class="stat-max" id="s-protein-max"></div>
+        <div class="stat-bar"><div class="stat-fill fill-protein" id="b-protein" style="width:0%"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Carbs</div>
+        <div class="stat-value" id="s-carbs">—</div>
+        <div class="stat-max" id="s-carbs-max"></div>
+        <div class="stat-bar"><div class="stat-fill fill-carbs" id="b-carbs" style="width:0%"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Fat</div>
+        <div class="stat-value" id="s-fat">—</div>
+        <div class="stat-max" id="s-fat-max"></div>
+        <div class="stat-bar"><div class="stat-fill fill-fat" id="b-fat" style="width:0%"></div></div>
       </div>
     </div>
-    <div class="chart-wrap"><canvas id="calorie-chart"></canvas></div>
-  </div>
 
-  <div class="stats-grid" id="stats-grid">
-    <div class="stat-card">
-      <div class="stat-label">Calories</div>
-      <div class="stat-value" id="s-kcal">—</div>
-      <div class="stat-max" id="s-kcal-max"></div>
-      <div class="stat-bar"><div class="stat-fill fill-calories" id="b-kcal" style="width:0%"></div></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Protein</div>
-      <div class="stat-value" id="s-protein">—</div>
-      <div class="stat-max" id="s-protein-max"></div>
-      <div class="stat-bar"><div class="stat-fill fill-protein" id="b-protein" style="width:0%"></div></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Carbs</div>
-      <div class="stat-value" id="s-carbs">—</div>
-      <div class="stat-max" id="s-carbs-max"></div>
-      <div class="stat-bar"><div class="stat-fill fill-carbs" id="b-carbs" style="width:0%"></div></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Fat</div>
-      <div class="stat-value" id="s-fat">—</div>
-      <div class="stat-max" id="s-fat-max"></div>
-      <div class="stat-bar"><div class="stat-fill fill-fat" id="b-fat" style="width:0%"></div></div>
-    </div>
-  </div>
-
-  <div class="meals-section">
-    <div class="meals-header">
-      <div class="meals-title">Today's meals</div>
-      <div class="meals-count" id="meals-count">0 meals</div>
-    </div>
-    <div id="meals-list">
-      <div class="empty-state">
-        <div class="empty-icon">🍽️</div>
-        <p>No meals logged today — send a food photo to the Telegram group!</p>
+    <div class="meals-section">
+      <div class="meals-header">
+        <div class="meals-title">Today's meals</div>
+        <div class="meals-count" id="meals-count">0 meals</div>
       </div>
+      <div id="meals-list">
+        <div class="empty-state">
+          <div class="empty-icon">🍽️</div>
+          <p>No meals logged today — send a food photo to the Telegram group!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Goals section (feat/goals-form) -->
+  <div id="section-goals" style="display:none;">
+    <div class="section-placeholder">
+      <div class="placeholder-icon">🎯</div>
+      <h3>Set your goals</h3>
+      <p>Tell us your body stats and we'll calculate your personalized calorie and macro targets. Coming soon.</p>
+    </div>
+  </div>
+
+  <!-- Friends section (feat/friends-leaderboard) -->
+  <div id="section-friends" style="display:none;">
+    <div class="section-placeholder">
+      <div class="placeholder-icon">🏆</div>
+      <h3>Friends leaderboard</h3>
+      <p>See how everyone in the group is tracking today. Who's hitting their macros? Coming soon.</p>
+    </div>
+  </div>
+
+  <!-- Settings section (feat/settings) -->
+  <div id="section-settings" style="display:none;">
+    <div class="section-placeholder">
+      <div class="placeholder-icon">⚙️</div>
+      <h3>Settings</h3>
+      <p>Edit your name, email, and macro targets. Coming soon.</p>
     </div>
   </div>
 </section>
@@ -764,7 +835,9 @@ window.doLogin = async function() {
 // ── Logout ──────────────────────────────────────────────────────────────────
 window.doLogout = function() {
   clearInterval(_refreshTimer);
+  _refreshTimer = null;
   clearSession();
+  history.replaceState(null, '', window.location.pathname);
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('landing').style.display = '';
 };
@@ -808,10 +881,10 @@ async function showDashboard() {
   document.getElementById('dash-name').textContent = getGreeting(u.name);
   document.getElementById('dash-date').textContent = formatDate(new Date());
 
-  await loadDashboardData();
-
-  clearInterval(_refreshTimer);
-  _refreshTimer = setInterval(loadDashboardData, 30000);
+  router(window.location.hash || '#today');
+  if (!window.location.hash || window.location.hash === '#today') {
+    await loadDashboardData();
+  }
 }
 
 function renderDashboard(meals, u) {
@@ -1093,6 +1166,32 @@ function getGreeting(name) {
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+// ── Router ───────────────────────────────────────────────────────────────────
+function router(hash) {
+  var section = (hash || '').replace('#', '') || 'today';
+  var valid = ['today', 'goals', 'friends', 'settings'];
+  if (valid.indexOf(section) === -1) section = 'today';
+
+  ['today', 'goals', 'friends', 'settings'].forEach(function(s) {
+    document.getElementById('section-' + s).style.display = s === section ? 'block' : 'none';
+  });
+  document.querySelectorAll('.dash-nav-link').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.section === section);
+  });
+
+  // Only run refresh timer on #today
+  if (section === 'today') {
+    if (!_refreshTimer) _refreshTimer = setInterval(loadDashboardData, 30000);
+  } else {
+    clearInterval(_refreshTimer);
+    _refreshTimer = null;
+  }
+}
+
+window.addEventListener('hashchange', function() {
+  if (currentUser) router(window.location.hash);
+});
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 window.addEventListener('load', function() {
