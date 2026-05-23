@@ -1,13 +1,8 @@
 # Claude Code Instructions
 
-## Google Sheets Setup
+## Supabase Setup
 
-The shared tracking sheet needs these tabs:
-- **Register**: Name, Email, Telegram User ID, KCal Target, Protein Target, Carbs Target, Fat Target, Fiber Target
-- **Meals**: User ID, Date, Time, Description, Calories, Protein, Carbs, Fat, Fiber
-- **Dashboard** (optional): Filtered views per person showing their meals + running totals
-
-The Apps Script webhook receives `user_id` in the POST and appends it to the Meals sheet for tracking.
+Tables created: `users` (registration) and `meals` (food logs). User IDs tracked separately per person.
 
 ## Telegram Voice Messages
 
@@ -40,13 +35,13 @@ When a Telegram message arrives with an `image_path` attribute (photo from user)
 1. Read the image file at the given path
 2. Analyze the food: estimate description, calories, protein_g, carbs_g, fat_g, fiber_g
 3. Get today's date (YYYY-MM-DD) and current time (HH:MM:SS)
-4. Extract `user_id` from the message metadata. Include it in the POST.
-5. Start POST to SHEETS_WEBHOOK asynchronously (in background, don't wait):
+4. Extract `user_id` from the message metadata
+5. Query Supabase for user's targets: `GET $SUPABASE_URL/rest/v1/users?user_id=eq.<user_id>` (default: KCal 2550, Protein 140g, Carbs 325g, Fat 75g, Fiber 35g)
+6. Start async POST to Supabase meals table (don't wait):
    ```
-   curl -s -X POST "$SHEETS_WEBHOOK" \
+   curl -s -X POST "$SUPABASE_URL/rest/v1/meals" \
+     -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
      -H "Content-Type: application/json" \
-     -d '{"date":"<date>","time":"<time>","user_id":<user_id>,"description":"<desc>","calories":<n>,"protein_g":<n>,"carbs_g":<n>,"fat_g":<n>,"fiber_g":<n>,"photo_msg_id":<msg_id>}' &
+     -d '{"user_id":<user_id>,"date":"<date>","time":"<time>","description":"<desc>","calories":<n>,"protein_g":<n>,"carbs_g":<n>,"fat_g":<n>,"fiber_g":<n>,"photo_msg_id":<msg_id>}' &
    ```
-   SHEETS_WEBHOOK = https://script.google.com/macros/s/AKfycbzrBV5GF9tNOezjhQavM52lYln8tGqOGuakOE_5vlIUMjkKHDUl4a2Aby2kjAGQtJMyYA/exec
-6. Look up user's targets from the Registration sheet (default fallback: KCal 2550, Protein 140g, Carbs 325g, Fat 75g, Fiber 35g)
 7. Reply immediately with macros logged + remaining vs user's targets. Calculate remaining locally. Keep response concise. POST happens in background.
