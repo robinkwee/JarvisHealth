@@ -531,9 +531,9 @@
         <!-- Login form -->
         <form id="login-form" style="display:none;" onsubmit="return false;">
           <div class="form-group">
-            <label>Telegram User ID</label>
-            <input type="number" id="login-userid" placeholder="e.g. 123456789">
-            <p class="form-hint">Same ID <a href="https://t.me/RKJarvisHealthBot" target="_blank" style="color:var(--accent);">@RKJarvisHealthBot</a> gave you when you sent <code>/whoami</code>.</p>
+            <label>Email</label>
+            <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+            <p class="form-hint">The email you used when registering.</p>
           </div>
           <button class="btn-submit" id="login-btn" onclick="doLogin()">
             <span id="login-btn-text">Sign in</span>
@@ -737,18 +737,18 @@ window.doRegister = async function() {
 
 // ── Login ──────────────────────────────────────────────────────────────────
 window.doLogin = async function() {
-  var userId = parseInt(document.getElementById('login-userid').value, 10);
-  if (!userId || isNaN(userId)) {
-    showFormMsg('login-msg', 'error', 'Enter your Telegram User ID.');
+  var email = document.getElementById('login-email').value.trim();
+  if (!email || !email.includes('@')) {
+    showFormMsg('login-msg', 'error', 'Enter a valid email address.');
     return;
   }
 
   setLoading('login-btn', 'login-btn-text', true, 'Signing in…');
 
   try {
-    var rows = await sbGet('users?user_id=eq.' + userId + '&select=id,name,email,user_id,kcal_target,protein_target,carbs_target,fat_target,fiber_target');
+    var rows = await sbGet('users?email=eq.' + encodeURIComponent(email) + '&select=id,name,email,user_id,kcal_target,protein_target,carbs_target,fat_target,fiber_target');
     if (rows.length === 0) {
-      showFormMsg('login-msg', 'error', 'No account found for that Telegram ID. Register first.');
+      showFormMsg('login-msg', 'error', 'No account found for that email. Register first.');
       setLoading('login-btn', 'login-btn-text', false, 'Sign in');
       return;
     }
