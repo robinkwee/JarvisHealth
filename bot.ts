@@ -13,10 +13,19 @@ const TARGETS = {
   fiber: parseInt(process.env.TARGET_FIBER || "25"),
 };
 
-const ALLOWED_CHAT_IDS = new Set([1999256197]); // robinkwee@gmail.com
+const SUPABASE_URL = process.env.SUPABASE_URL!;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY!;
 
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+
+async function getRegisteredUser(userId: number) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?user_id=eq.${userId}&limit=1`, {
+    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` },
+  });
+  const rows = await res.json() as any[];
+  return rows[0] ?? null;
+}
 
 // --- Database setup ---
 const db = new Database(import.meta.dir + "/log.db");
@@ -418,7 +427,6 @@ async function poll() {
 
         if (update.callback_query) {
           const cq = update.callback_query;
-          if (!ALLOWED_CHAT_IDS.has(cq.message.chat.id)) continue;
           await handleCallbackQuery(cq.id, cq.message.chat.id, cq.data);
           continue;
         }
@@ -427,11 +435,21 @@ async function poll() {
         if (!msg) continue;
 
         const chatId = msg.chat.id;
-        if (!ALLOWED_CHAT_IDS.has(chatId)) continue;
-
         const userId = msg.from?.id;
+
         if (msg.photo) {
-          await handlePhoto(chatId, msg.message_id, msg.photo);
+          const user = userId ? await getRegisteredUser(userId) : null;
+          if (!user) {
+            await sendMessage(chatId,
+              `👋 You need to register first!\n\n` +
+              `1. Go to the dashboard: ${process.env.DASHBOARD_URL || "https://your-dashboard-url.com"}\n` +
+              `2. Click *New? Register*\n` +
+              `3. Your Telegram ID is: \`${userId}\`\n\n` +
+              `Once registered, send your food photo again!`
+            );
+          } else {
+            await handlePhoto(chatId, msg.message_id, msg.photo);
+          }
         } else if (msg.text) {
           await handleText(chatId, msg.text, userId);
         }
