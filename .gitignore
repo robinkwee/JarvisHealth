@@ -36,3 +36,4 @@ log.db
 
 # Finder (MacOS) folder config
 .DS_Store
+.gstack/

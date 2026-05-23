@@ -3,565 +3,1064 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JarvisHealth - Food Tracking with Friends</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <title>JarvisHealth — Track food with friends</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; padding: 20px; }
-    .container { max-width: 960px; margin: 0 auto; }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-    h1 { color: #333; margin-bottom: 6px; font-size: 32px; }
-    .subtitle { color: #666; margin-bottom: 30px; font-size: 16px; }
-    .section { background: white; padding: 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface2: #1c1c27;
+      --border: rgba(255,255,255,0.07);
+      --text: #f0f0f5;
+      --muted: #8b8ba0;
+      --accent: #6c63ff;
+      --accent2: #a855f7;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --tg-green: #2cb67d;
+    }
 
-    /* Intro grid */
-    .intro-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
-    .intro-text h2 { color: #333; margin-bottom: 12px; font-size: 22px; }
-    .intro-text p { color: #666; line-height: 1.6; margin-bottom: 12px; font-size: 15px; }
-    .feature-list { list-style: none; margin: 16px 0; }
-    .feature-list li { color: #555; padding: 6px 0 6px 28px; position: relative; font-size: 15px; }
-    .feature-list li:before { content: "✓"; position: absolute; left: 0; color: #28a745; font-weight: bold; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
 
-    /* Telegram Demo */
-    .demo-panel h3 { color: #333; margin-bottom: 14px; font-size: 18px; }
-    .tg-window { background: #e5ddd5; border-radius: 12px; overflow: hidden; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
-    .tg-header { background: #075e54; color: white; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
-    .tg-avatar { width: 36px; height: 36px; border-radius: 50%; background: #25d366; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-    .tg-header-info .tg-name { font-weight: 600; font-size: 15px; }
-    .tg-header-info .tg-status { font-size: 12px; opacity: 0.8; }
-    .tg-body { padding: 12px; min-height: 400px; display: flex; flex-direction: column; gap: 8px; background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23cbb89b' fill-opacity='0.15'%3E%3Cpath d='M20 0L0 20h40L20 0zm0 40L0 20h40L20 40z'/%3E%3C/g%3E%3C/svg%3E"); }
+    /* ── Nav ── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(10,10,15,0.85);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+    .logo { font-weight: 800; font-size: 18px; letter-spacing: -0.5px; }
+    .logo span { color: var(--accent); }
+    nav a { color: var(--muted); font-size: 14px; text-decoration: none; }
+    nav a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--accent);
+      color: white;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+    }
+    .nav-cta:hover { background: #5a52e0; color: white; }
 
-    /* Messages */
-    .msg { max-width: 78%; display: flex; flex-direction: column; }
+    /* ── Sections ── */
+    section { max-width: 1100px; margin: 0 auto; padding: 80px 40px; }
+
+    /* ── Hero ── */
+    .hero { text-align: center; padding-top: 100px; padding-bottom: 60px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(108,99,255,0.12);
+      border: 1px solid rgba(108,99,255,0.3);
+      color: var(--accent);
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 28px;
+    }
+    h1 {
+      font-size: clamp(36px, 5vw, 64px);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+    h1 .grad {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 560px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover { background: #5a52e0; transform: translateY(-1px); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-ghost:hover { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.04); }
+
+    /* ── Steps ── */
+    .steps-section { padding-top: 0; }
+    .section-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(28px, 3vw, 40px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 14px;
+    }
+    .section-sub { color: var(--muted); font-size: 16px; max-width: 540px; margin-bottom: 50px; }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      transition: border-color 0.2s;
+    }
+    .step-card:hover { border-color: rgba(108,99,255,0.4); }
+    .step-num {
+      width: 36px; height: 36px;
+      background: rgba(108,99,255,0.15);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; color: var(--accent);
+      margin-bottom: 16px;
+    }
+    .step-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .step-card p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+    .step-card code {
+      background: rgba(108,99,255,0.12);
+      color: var(--accent);
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-size: 13px;
+    }
+
+    /* ── Demo + Register split ── */
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+    @media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
+
+    /* ── Telegram Demo ── */
+    .tg-wrap { }
+    .tg-window {
+      background: #1a1a2e;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    }
+    .tg-header {
+      background: linear-gradient(135deg, #1a6b4a, #1d8a5e);
+      padding: 14px 18px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .tg-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--tg-green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .tg-name { font-weight: 600; font-size: 15px; color: white; }
+    .tg-status { font-size: 12px; color: rgba(255,255,255,0.7); }
+    .tg-body {
+      padding: 16px;
+      height: 440px;
+      background: #0f2027;
+      display: flex; flex-direction: column; gap: 10px;
+      overflow-y: auto;
+    }
+    .msg { display: flex; flex-direction: column; max-width: 82%; }
     .msg.user { align-self: flex-end; }
     .msg.bot { align-self: flex-start; }
-    .msg-bubble { padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.5; position: relative; }
-    .msg.user .msg-bubble { background: #dcf8c6; border-radius: 8px 0 8px 8px; }
-    .msg.bot .msg-bubble { background: white; border-radius: 0 8px 8px 8px; }
-    .msg-sender { font-size: 12px; font-weight: 600; color: #075e54; margin-bottom: 3px; margin-left: 2px; }
-    .msg-time { font-size: 11px; color: #999; text-align: right; margin-top: 3px; }
-    .msg-photo { width: 100%; max-width: 220px; border-radius: 8px; object-fit: cover; display: block; margin-bottom: 4px; background: #ddd; height: 160px; display: flex; align-items: center; justify-content: center; font-size: 48px; border-radius: 8px; }
-    .msg-caption { font-size: 13px; color: #666; margin-top: 4px; }
-    .bot-response { font-size: 13px; line-height: 1.7; }
-    .bot-response .meal-title { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
-    .bot-response .macros { color: #444; margin-bottom: 8px; }
-    .bot-response .remaining-title { font-weight: 600; margin-bottom: 4px; }
-    .bot-response .remaining-row { display: flex; justify-content: space-between; padding: 2px 0; }
-    .bot-response .remaining-row span:first-child { color: #555; }
-    .bot-response .remaining-row span:last-child { font-weight: 500; }
-    .over { color: #e74c3c !important; }
-    .ok { color: #27ae60 !important; }
-    .warning { color: #f39c12 !important; }
+    .msg-sender { font-size: 12px; font-weight: 600; color: #a78bfa; margin-bottom: 4px; margin-left: 4px; }
+    .msg-bubble {
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .msg.user .msg-bubble {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white;
+      border-radius: 14px 14px 4px 14px;
+    }
+    .msg.bot .msg-bubble {
+      background: var(--surface2);
+      color: var(--text);
+      border-radius: 4px 14px 14px 14px;
+    }
+    .msg-time { font-size: 11px; color: var(--muted); margin-top: 4px; text-align: right; }
+    .food-img {
+      width: 100%; height: 120px;
+      background: linear-gradient(135deg, #2d1b69, #1a2950);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 52px;
+      margin-bottom: 6px;
+    }
+    .macro-line { font-size: 13px; line-height: 1.8; }
+    .macro-line strong { color: var(--green); }
+    .tg-bubble-hidden { display: none; }
 
-    /* Typing indicator */
-    .typing { display: flex; align-items: center; gap: 4px; padding: 10px 14px; background: white; border-radius: 0 8px 8px 8px; width: fit-content; }
-    .typing span { width: 7px; height: 7px; background: #999; border-radius: 50%; animation: bounce 1.2s infinite; }
-    .typing span:nth-child(2) { animation-delay: 0.2s; }
-    .typing span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
-
-    /* Hidden initially, animated in */
-    .msg, .tg-typing { opacity: 0; transition: opacity 0.4s ease; }
-    .msg.visible { opacity: 1; }
-    .tg-typing { display: none; }
-    .tg-typing.visible { display: flex; opacity: 1; }
-
-    /* Demo button */
-    .btn-demo-wrap { text-align: center; margin-top: 14px; }
-    .btn-demo { background: #25d366; color: white; border: none; padding: 10px 24px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
-    .btn-demo:hover { background: #1da851; }
-
-    /* Login */
-    .login-section { max-width: 420px; }
-    .login-section h2 { margin-bottom: 20px; font-size: 22px; color: #333; }
-    .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; color: #333; font-weight: 500; margin-bottom: 6px; font-size: 14px; }
-    .form-group input { padding: 11px 14px; width: 100%; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; }
-    .form-group input:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.15); }
-    .form-group small { color: #999; font-size: 12px; margin-top: 4px; display: block; }
-    .btn-primary { background: #007bff; color: white; border: none; width: 100%; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-    .btn-primary:hover { background: #0056b3; }
-    .alert { padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; font-size: 14px; }
-    .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-
-    /* Dashboard */
-    .dashboard { display: none; }
-    .dashboard.active { display: block; }
-    .dash-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-    .dash-header h2 { font-size: 26px; color: #333; }
-    .dash-header p { color: #999; font-size: 13px; margin-top: 4px; }
-    .btn-logout { background: #dc3545; color: white; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-    .btn-logout:hover { background: #c82333; }
-
-    /* Stats */
-    .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
-    .stat-card { padding: 18px 14px; border-radius: 10px; color: white; }
-    .stat-card.kcal    { background: linear-gradient(135deg, #f5576c, #f093fb); }
-    .stat-card.protein { background: linear-gradient(135deg, #4facfe, #00f2fe); }
-    .stat-card.carbs   { background: linear-gradient(135deg, #43e97b, #38f9d7); }
-    .stat-card.fat     { background: linear-gradient(135deg, #fa709a, #fee140); }
-    .stat-card.fiber   { background: linear-gradient(135deg, #30cfd0, #5614d4); }
-    .stat-label { font-size: 11px; opacity: 0.9; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .stat-value { font-size: 26px; font-weight: 700; }
-    .stat-remaining { font-size: 11px; opacity: 0.85; margin-top: 6px; }
-
-    /* Meals */
-    .meals-section h3 { font-size: 18px; color: #333; margin-bottom: 16px; }
-    .meal-item { padding: 14px 0; border-bottom: 1px solid #f0f0f0; }
-    .meal-item:last-child { border-bottom: none; }
-    .meal-time { font-size: 12px; color: #999; }
-    .meal-desc { font-size: 15px; font-weight: 500; color: #333; margin: 4px 0; }
-    .meal-macros { display: flex; gap: 16px; font-size: 13px; color: #777; margin-top: 4px; flex-wrap: wrap; }
-    .meal-macros strong { color: #444; }
-    .empty-state { text-align: center; padding: 40px 0; color: #bbb; font-size: 15px; }
-    .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
-
+    /* ── Register / Login ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+    }
+    .tabs { display: flex; gap: 0; margin-bottom: 28px; border-radius: 10px; overflow: hidden; background: var(--surface2); padding: 4px; }
+    .tab {
+      flex: 1; padding: 10px; font-size: 14px; font-weight: 500;
+      border: none; background: none; color: var(--muted);
+      cursor: pointer; border-radius: 7px; transition: all 0.2s;
+    }
+    .tab.active { background: var(--accent); color: white; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 7px; }
+    .form-group input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 11px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    .form-group input:focus { border-color: var(--accent); }
+    .targets-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-hint { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+    .form-hint code { background: rgba(108,99,255,0.15); color: var(--accent); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+    .btn-submit {
+      width: 100%;
+      background: var(--accent);
+      color: white;
+      padding: 13px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      margin-top: 4px;
+    }
+    .btn-submit:hover:not(:disabled) { background: #5a52e0; }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .form-msg { margin-top: 14px; padding: 12px 14px; border-radius: 10px; font-size: 14px; display: none; }
+    .form-msg.error { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); display: block; }
+    .form-msg.success { background: rgba(34,197,94,0.1); color: #86efac; border: 1px solid rgba(34,197,94,0.2); display: block; }
+    .details-toggle { font-size: 13px; color: var(--muted); cursor: pointer; margin-top: -8px; margin-bottom: 16px; display: block; }
+    .details-toggle:hover { color: var(--text); }
+    details summary { list-style: none; }
+    details summary::-webkit-details-marker { display: none; }
 
-    @media (max-width: 700px) {
-      .intro-grid { grid-template-columns: 1fr; }
-      .stats { grid-template-columns: repeat(2, 1fr); }
+    /* ── Dashboard ── */
+    #dashboard { display: none; }
+    .dash-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 40px;
+    }
+    .dash-greeting { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+    .dash-date { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .btn-logout {
+      background: none; color: var(--muted); border: 1px solid var(--border);
+      padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer;
+    }
+    .btn-logout:hover { color: var(--red); border-color: rgba(239,68,68,0.3); }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+    }
+    .stat-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .stat-value { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
+    .stat-max { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .stat-bar { height: 4px; background: rgba(255,255,255,0.08); border-radius: 4px; margin-top: 12px; overflow: hidden; }
+    .stat-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+    .fill-calories { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+    .fill-protein { background: linear-gradient(90deg, var(--green), #16a34a); }
+    .fill-carbs { background: linear-gradient(90deg, var(--amber), #d97706); }
+    .fill-fat { background: linear-gradient(90deg, #f97316, #c2410c); }
+
+    .meals-section { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; }
+    .meals-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .meals-title { font-size: 18px; font-weight: 700; }
+    .meals-count { font-size: 13px; color: var(--muted); background: var(--surface2); padding: 4px 10px; border-radius: 6px; }
+    .meal-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .meal-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .meal-icon { font-size: 28px; flex-shrink: 0; }
+    .meal-info { flex: 1; }
+    .meal-desc { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+    .meal-time { font-size: 12px; color: var(--muted); }
+    .meal-kcal { font-size: 14px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+    .empty-state { text-align: center; padding: 48px 0; color: var(--muted); }
+    .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+
+    /* ── Success state ── */
+    .success-state { text-align: center; padding: 48px 20px; }
+    .success-ring {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: rgba(34,197,94,0.12);
+      border: 2px solid rgba(34,197,94,0.4);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 30px;
+      animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .success-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .success-sub { color: var(--muted); font-size: 14px; }
+    .success-dots { display: flex; gap: 6px; justify-content: center; margin-top: 20px; }
+    .success-dots span {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); opacity: 0.3;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .success-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .success-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+    /* ── Calorie chart ── */
+    .chart-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+    .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .chart-title { font-size: 18px; font-weight: 700; }
+    .chart-legend { display: flex; align-items: center; gap: 16px; font-size: 13px; color: var(--muted); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    .chart-wrap { position: relative; height: 200px; }
+
+    /* ── Footer ── */
+    footer { text-align: center; padding: 40px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      nav { padding: 16px 20px; }
+      section { padding: 60px 20px; }
+      .hero { padding-top: 60px; }
+      .targets-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-<div class="container">
-  <h1>🍽️ JarvisHealth</h1>
-  <p class="subtitle">Track your meals together with friends — just send a photo</p>
 
-  <!-- Intro Section -->
-  <div id="introSection">
-    <div class="section">
-      <div class="intro-grid">
+<!-- Nav -->
+<nav>
+  <div class="logo">Jarvis<span>Health</span></div>
+  <button class="nav-cta" onclick="document.getElementById('get-started').scrollIntoView({behavior:'smooth'})">Get started</button>
+</nav>
 
-        <!-- Left: text -->
-        <div class="intro-text">
-          <h2>What is JarvisHealth?</h2>
-          <p>JarvisHealth lets you and your friends track meals together using Telegram. Just send a photo of your food to the group chat — the AI instantly identifies the meal, estimates calories and macros, and logs it to your personal dashboard.</p>
-          <p>No manual entry. No app to download. Just snap and send.</p>
-          <ul class="feature-list">
-            <li>Send food photos to a shared Telegram group</li>
-            <li>AI identifies the meal and calculates macros instantly</li>
-            <li>Each person tracks their own personal daily targets</li>
-            <li>View your progress on this dashboard anytime</li>
-            <li>Share the journey with your friends</li>
-          </ul>
-          <p style="margin-top:16px;"><strong>To join:</strong> message the Telegram bot with <code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;">/start</code> to get your User ID, then register below.</p>
+<!-- ── Landing (shown when not logged in) ── -->
+<div id="landing">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="badge">🤖 AI-powered food tracking</div>
+    <h1>Track food with friends,<br><span class="grad">one photo at a time</span></h1>
+    <p class="hero-sub">Send a food photo to your Telegram group. JarvisHealth logs the macros instantly and keeps everyone accountable — together.</p>
+    <div class="hero-actions">
+      <button class="btn-primary" onclick="document.getElementById('get-started').scrollIntoView({behavior:'smooth'})">Start tracking free</button>
+      <button class="btn-ghost" onclick="document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">See how it works</button>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section id="how-it-works" class="steps-section">
+    <p class="section-label">How it works</p>
+    <h2 class="section-title">Three steps to your<br>daily macro goals</h2>
+    <p class="section-sub">No apps to install. No manual logging. Just snap and track.</p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <h3>Join the group</h3>
+        <p>Ask for an invite to the JarvisHealth Telegram group — or create your own with your friends and add the bot.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <h3>Get your Telegram ID</h3>
+        <p>Message <a href="https://t.me/RKJarvisHealthBot" target="_blank" style="color:var(--accent);text-decoration:none;">@RKJarvisHealthBot</a> and send <code>/whoami</code>. It replies with your unique ID — you'll need it to register below.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <h3>Register & log meals</h3>
+        <p>Register with your Telegram ID here. Then snap food photos in the group — the bot logs macros automatically.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <h3>Track your progress</h3>
+        <p>Come back to this page any time to see today's totals, your macro breakdown, and every meal logged.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Demo + Register -->
+  <section id="get-started">
+    <p class="section-label">Try it</p>
+    <h2 class="section-title">See it in action,<br>then sign up</h2>
+    <p class="section-sub">Watch the bot work, then register with your Telegram ID to start logging your meals.</p>
+    <div class="split">
+      <!-- Telegram demo -->
+      <div class="tg-wrap">
+        <div class="tg-window">
+          <div class="tg-header">
+            <div class="tg-avatar">🤖</div>
+            <div>
+              <div class="tg-name">Food Logging</div>
+              <div class="tg-status">3 members</div>
+            </div>
+          </div>
+          <div class="tg-body" id="demo-chat">
+            <!-- messages injected by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Register / Login panel -->
+      <div class="panel" id="auth-panel">
+        <div class="tabs">
+          <button class="tab active" onclick="showTab('register')">Create account</button>
+          <button class="tab" onclick="showTab('login')">Sign in</button>
         </div>
 
-        <!-- Right: Telegram demo -->
-        <div class="demo-panel">
-          <h3>📱 See it in action</h3>
-          <div class="tg-window">
-            <div class="tg-header">
-              <div class="tg-avatar">🤖</div>
-              <div class="tg-header-info">
-                <div class="tg-name">JarvisHealth Group</div>
-                <div class="tg-status">4 members</div>
+        <!-- Register form -->
+        <form id="register-form" onsubmit="return false;">
+          <div class="form-group">
+            <label>Your name</label>
+            <input type="text" id="reg-name" placeholder="Robin" autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="reg-email" placeholder="you@example.com" autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label>Telegram User ID</label>
+            <input type="number" id="reg-userid" placeholder="e.g. 123456789">
+            <p class="form-hint">Message <a href="https://t.me/RKJarvisHealthBot" target="_blank" style="color:var(--accent);">@RKJarvisHealthBot</a> and send <code>/whoami</code> — it replies with your ID.</p>
+          </div>
+          <details>
+            <summary class="details-toggle">⚙️ Customize daily targets (optional)</summary>
+            <div style="margin-top:14px;">
+              <div class="targets-row">
+                <div class="form-group">
+                  <label>Calories (kcal)</label>
+                  <input type="number" id="reg-kcal" placeholder="2550">
+                </div>
+                <div class="form-group">
+                  <label>Protein (g)</label>
+                  <input type="number" id="reg-protein" placeholder="140">
+                </div>
+                <div class="form-group">
+                  <label>Carbs (g)</label>
+                  <input type="number" id="reg-carbs" placeholder="325">
+                </div>
+                <div class="form-group">
+                  <label>Fat (g)</label>
+                  <input type="number" id="reg-fat" placeholder="75">
+                </div>
               </div>
             </div>
-            <div class="tg-body" id="tgBody">
-              <!-- Messages injected by JS -->
-            </div>
-          </div>
-          <div class="btn-demo-wrap">
-            <button class="btn-demo" onclick="runDemo()">▶ Play Demo</button>
-          </div>
-        </div>
+          </details>
+          <button class="btn-submit" id="reg-btn" onclick="doRegister()">
+            <span id="reg-btn-text">Create account</span>
+          </button>
+          <div class="form-msg" id="reg-msg"></div>
+        </form>
 
+        <!-- Login form -->
+        <form id="login-form" style="display:none;" onsubmit="return false;">
+          <div class="form-group">
+            <label>Telegram User ID</label>
+            <input type="number" id="login-userid" placeholder="e.g. 123456789">
+            <p class="form-hint">Same ID <a href="https://t.me/RKJarvisHealthBot" target="_blank" style="color:var(--accent);">@RKJarvisHealthBot</a> gave you when you sent <code>/whoami</code>.</p>
+          </div>
+          <button class="btn-submit" id="login-btn" onclick="doLogin()">
+            <span id="login-btn-text">Sign in</span>
+          </button>
+          <div class="form-msg" id="login-msg"></div>
+        </form>
       </div>
     </div>
+  </section>
 
-    <!-- Register / Login tabs -->
-    <div class="section login-section">
-      <div style="display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid #eee;">
-        <button id="tabRegister" onclick="switchTab('register')" style="flex:1;padding:10px;border:none;background:none;font-size:15px;font-weight:600;color:#007bff;border-bottom:2px solid #007bff;margin-bottom:-2px;cursor:pointer;">New? Register</button>
-        <button id="tabLogin" onclick="switchTab('login')" style="flex:1;padding:10px;border:none;background:none;font-size:15px;color:#999;cursor:pointer;">Already registered? Login</button>
+</div><!-- /landing -->
+
+<!-- ── Dashboard (shown when logged in) ── -->
+<section id="dashboard">
+  <div class="dash-header">
+    <div>
+      <div class="dash-greeting" id="dash-name">Good morning</div>
+      <div class="dash-date" id="dash-date"></div>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">Sign out</button>
+  </div>
+
+  <div class="chart-section">
+    <div class="chart-header">
+      <div class="chart-title">Calories this week</div>
+      <div class="chart-legend">
+        <span><span class="legend-dot" style="background:var(--accent)"></span>Logged</span>
+        <span><span class="legend-dot" style="background:rgba(239,68,68,0.6);border-radius:2px;height:2px;"></span>Target</span>
       </div>
+    </div>
+    <div class="chart-wrap"><canvas id="calorie-chart"></canvas></div>
+  </div>
 
-      <div id="alertContainer"></div>
-
-      <!-- Register form -->
-      <div id="registerForm">
-
-        <!-- Step 1 -->
-        <div style="background:#f0f9ff;border:2px solid #0ea5e9;border-radius:10px;padding:18px;margin-bottom:20px;">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-            <div style="background:#0ea5e9;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">1</div>
-            <strong style="font-size:16px;">Open the Telegram bot and send it a message</strong>
-          </div>
-          <a href="https://t.me/RKJarvisHealthBot" target="_blank"
-            style="display:flex;align-items:center;justify-content:center;gap:10px;background:#0088cc;color:white;text-decoration:none;padding:14px;border-radius:8px;font-size:16px;font-weight:600;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.32 13.617l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.828.942z"/></svg>
-            Open @RKJarvisHealthBot on Telegram
-          </a>
-          <p style="color:#0369a1;font-size:13px;margin-top:10px;text-align:center;">
-            Once it opens, tap <strong>Start</strong> or type <code style="background:#dbeafe;padding:1px 5px;border-radius:3px;">/start</code> — the bot will reply with your User ID number. Copy that number.
-          </p>
-        </div>
-
-        <!-- Step 2 -->
-        <div style="margin-bottom:6px;">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-            <div style="background:#6366f1;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">2</div>
-            <strong style="font-size:16px;">Fill in your details</strong>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Your Name</label>
-          <input type="text" id="regName" placeholder="Jane Smith">
-        </div>
-        <div class="form-group">
-          <label>Email Address</label>
-          <input type="email" id="regEmail" placeholder="jane@email.com">
-        </div>
-        <div class="form-group">
-          <label>Your Telegram User ID <span style="color:#999;font-weight:400;">(from the bot reply in Step 1)</span></label>
-          <input type="number" id="regUserId" placeholder="e.g. 123456789" style="font-size:18px;letter-spacing:1px;">
-          <small>It's a number — paste it exactly as the bot sent it</small>
-        </div>
-        <details style="margin-bottom:16px;">
-          <summary style="color:#666;font-size:13px;cursor:pointer;">⚙️ Optional: customise daily targets (defaults are fine to start)</summary>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
-            <div class="form-group"><label style="font-size:13px;">Calories (kcal)</label><input type="number" id="regKcal" placeholder="2550"></div>
-            <div class="form-group"><label style="font-size:13px;">Protein (g)</label><input type="number" id="regProtein" placeholder="140"></div>
-            <div class="form-group"><label style="font-size:13px;">Carbs (g)</label><input type="number" id="regCarbs" placeholder="325"></div>
-            <div class="form-group"><label style="font-size:13px;">Fat (g)</label><input type="number" id="regFat" placeholder="75"></div>
-          </div>
-        </details>
-
-        <!-- Step 3 -->
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-          <div style="background:#22c55e;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">3</div>
-          <strong style="font-size:16px;">Create your account</strong>
-        </div>
-        <button id="registerBtn" class="btn-primary" onclick="register()" style="background:#22c55e;">Create My Account</button>
-      </div>
-
-      <!-- Login form -->
-      <div id="loginForm" style="display:none;">
-        <div class="form-group">
-          <label>Email Address</label>
-          <input type="email" id="emailInput" placeholder="your@email.com">
-        </div>
-        <div class="form-group">
-          <label>Telegram User ID</label>
-          <input type="number" id="userIdInput" placeholder="123456789">
-          <small>Don't know your ID? <a href="https://t.me/RKJarvisHealthBot" target="_blank">Open the bot</a> and send <strong>/whoami</strong></small>
-        </div>
-        <button class="btn-primary" onclick="login()">Login</button>
-      </div>
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Calories</div>
+      <div class="stat-value" id="s-kcal">—</div>
+      <div class="stat-max" id="s-kcal-max"></div>
+      <div class="stat-bar"><div class="stat-fill fill-calories" id="b-kcal" style="width:0%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Protein</div>
+      <div class="stat-value" id="s-protein">—</div>
+      <div class="stat-max" id="s-protein-max"></div>
+      <div class="stat-bar"><div class="stat-fill fill-protein" id="b-protein" style="width:0%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Carbs</div>
+      <div class="stat-value" id="s-carbs">—</div>
+      <div class="stat-max" id="s-carbs-max"></div>
+      <div class="stat-bar"><div class="stat-fill fill-carbs" id="b-carbs" style="width:0%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Fat</div>
+      <div class="stat-value" id="s-fat">—</div>
+      <div class="stat-max" id="s-fat-max"></div>
+      <div class="stat-bar"><div class="stat-fill fill-fat" id="b-fat" style="width:0%"></div></div>
     </div>
   </div>
 
-  <!-- Dashboard -->
-  <div class="dashboard" id="dashboard">
-    <div class="section">
-      <div class="dash-header">
-        <div>
-          <h2 id="dashName"></h2>
-          <p id="dashDate"></p>
-        </div>
-        <button class="btn-logout" onclick="logout()">Logout</button>
-      </div>
-      <div class="stats" id="stats"></div>
-      <div class="meals-section">
-        <h3>Today's Meals</h3>
-        <div id="mealsList"></div>
+  <div class="meals-section">
+    <div class="meals-header">
+      <div class="meals-title">Today's meals</div>
+      <div class="meals-count" id="meals-count">0 meals</div>
+    </div>
+    <div id="meals-list">
+      <div class="empty-state">
+        <div class="empty-icon">🍽️</div>
+        <p>No meals logged today — send a food photo to the Telegram group!</p>
       </div>
     </div>
   </div>
-</div>
+</section>
+
+<footer>
+  JarvisHealth — food tracking for the group chat era
+</footer>
 
 <script>
-  const SUPABASE_URL = 'https://qitvgvjfpisvfzhzzxlm.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpdHZndmpmcGlzdmZ6aHp6eGxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0OTQ2NzMsImV4cCI6MjA5NTA3MDY3M30.89Vm603qudaGYM9xltU-NcA7ZyqTkRLyB4S7Q5dIUmE';
-  let supabase = null;
-  let currentUser = null;
+// ── Config ──────────────────────────────────────────────────────────────
+var SUPABASE_URL = 'https://qitvgvjfpisvfzhzzxlm.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpdHZndmpmcGlzdmZ6aHp6eGxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0OTQ2NzMsImV4cCI6MjA5NTA3MDY3M30.89Vm603qudaGYM9xltU-NcA7ZyqTkRLyB4S7Q5dIUmE';
 
-  function initSupabase() {
-    try {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    } catch(e) { console.warn('Supabase init failed:', e); }
-  }
+function sbHeaders() {
+  return {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': 'application/json'
+  };
+}
 
-  // ---------- Telegram Demo ----------
-  const demoMessages = [
-    { delay: 300,  type: 'user', sender: 'Robin', time: '12:45', content: 'photo', emoji: '🍱', label: 'Panda Express combo' },
-    { delay: 1200, type: 'typing' },
-    { delay: 3000, type: 'bot', sender: 'Jarvis', time: '12:45', content: 'response',
-      title: '🍱 Panda Express – Orange Chicken, Fried Rice, Chow Mein',
-      macros: '1 500 kcal  |  54g protein  |  170g carbs  |  62g fat  |  2g fiber',
-      remaining: [
-        { label: 'kcal',    value: '1 050', cls: 'ok' },
-        { label: 'protein', value: '86g ✓', cls: 'ok' },
-        { label: 'carbs',   value: '155g ✓', cls: 'ok' },
-        { label: 'fat',     value: '13g ⚠️', cls: 'warning' },
-        { label: 'fiber',   value: '33g ✓', cls: 'ok' },
-      ]
-    },
-    { delay: 4500, type: 'user', sender: 'Sarah', time: '13:10', content: 'photo', emoji: '🥗', label: 'Buddha bowl' },
-    { delay: 5400, type: 'typing' },
-    { delay: 6800, type: 'bot', sender: 'Jarvis', time: '13:10', content: 'response',
-      title: '🥗 Buddha Bowl – Chicken, Quinoa, Roasted Veggies, Avocado',
-      macros: '880 kcal  |  45g protein  |  68g carbs  |  41g fat  |  15g fiber',
-      remaining: [
-        { label: 'kcal',    value: '1 670 ✓', cls: 'ok' },
-        { label: 'protein', value: '95g ✓',  cls: 'ok' },
-        { label: 'carbs',   value: '257g ✓', cls: 'ok' },
-        { label: 'fat',     value: '34g ✓',  cls: 'ok' },
-        { label: 'fiber',   value: '20g ✓',  cls: 'ok' },
-      ]
-    },
-  ];
+async function sbGet(path) {
+  var r = await fetch(SUPABASE_URL + '/rest/v1/' + path, { headers: sbHeaders() });
+  if (!r.ok) throw new Error('Supabase error ' + r.status);
+  return r.json();
+}
 
-  let demoRunning = false;
-  function runDemo() {
-    if (demoRunning) return;
-    demoRunning = true;
-    document.getElementById('tgBody').innerHTML = '';
-
-    demoMessages.forEach(msg => {
-      setTimeout(() => {
-        const body = document.getElementById('tgBody');
-        if (!body) return;
-
-        // Remove old typing indicator
-        const oldTyping = body.querySelector('.tg-typing');
-        if (oldTyping) oldTyping.remove();
-
-        if (msg.type === 'typing') {
-          const el = document.createElement('div');
-          el.className = 'msg bot';
-          el.style.opacity = '0';
-          el.style.transition = 'opacity 0.3s ease';
-          el.innerHTML = `<div class="typing"><span></span><span></span><span></span></div>`;
-          body.appendChild(el);
-          setTimeout(() => el.style.opacity = '1', 30);
-        } else if (msg.type === 'user') {
-          const el = document.createElement('div');
-          el.className = 'msg user';
-          el.innerHTML = `
-            <div class="msg-sender" style="text-align:right;color:#e67e22;">${msg.sender}</div>
-            <div class="msg-bubble">
-              <div class="msg-photo" style="background:#f5e6c8;">${msg.emoji}</div>
-              <div class="msg-caption">${msg.label}</div>
-              <div class="msg-time">${msg.time}</div>
-            </div>`;
-          body.appendChild(el);
-          setTimeout(() => el.classList.add('visible'), 30);
-        } else if (msg.type === 'bot') {
-          const rows = msg.remaining.map(r =>
-            `<div class="remaining-row"><span>${r.label}</span><span class="${r.cls}">${r.value}</span></div>`
-          ).join('');
-          const el = document.createElement('div');
-          el.className = 'msg bot';
-          el.innerHTML = `
-            <div class="msg-sender">🤖 ${msg.sender}</div>
-            <div class="msg-bubble">
-              <div class="bot-response">
-                <div class="meal-title">${msg.title}</div>
-                <div class="macros">${msg.macros}</div>
-                <div class="remaining-title">Remaining today:</div>
-                ${rows}
-              </div>
-              <div class="msg-time">${msg.time}</div>
-            </div>`;
-          body.appendChild(el);
-          setTimeout(() => el.classList.add('visible'), 30);
-        }
-
-        body.scrollTop = body.scrollHeight;
-        if (msg === demoMessages[demoMessages.length - 1]) demoRunning = false;
-      }, msg.delay);
-    });
-  }
-
-  // Auto-play on load, restore session, init Supabase
-  window.addEventListener('load', () => {
-    initSupabase();
-    const saved = localStorage.getItem('jh_user');
-    if (saved) {
-      try {
-        currentUser = JSON.parse(saved);
-        showDashboard();
-        return;
-      } catch(e) { localStorage.removeItem('jh_user'); }
-    }
-    setTimeout(runDemo, 800);
+async function sbPost(path, body) {
+  var r = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    method: 'POST',
+    headers: Object.assign({}, sbHeaders(), { 'Prefer': 'return=representation' }),
+    body: JSON.stringify(body)
   });
-
-  // ---------- Auth ----------
-  function showAlert(msg, type = 'error') {
-    const cls = type === 'success' ? 'alert-success' : 'alert-error';
-    document.getElementById('alertContainer').innerHTML = `<div class="alert ${cls}">${msg}</div>`;
-    if (type !== 'success') setTimeout(() => document.getElementById('alertContainer').innerHTML = '', 6000);
+  if (!r.ok) {
+    var txt = await r.text();
+    throw new Error(txt);
   }
+  return r.json();
+}
 
-  function switchTab(tab) {
-    const isRegister = tab === 'register';
-    document.getElementById('registerForm').style.display = isRegister ? 'block' : 'none';
-    document.getElementById('loginForm').style.display = isRegister ? 'none' : 'block';
-    document.getElementById('tabRegister').style.cssText = isRegister
-      ? 'flex:1;padding:10px;border:none;background:none;font-size:15px;font-weight:600;color:#007bff;border-bottom:2px solid #007bff;margin-bottom:-2px;cursor:pointer;'
-      : 'flex:1;padding:10px;border:none;background:none;font-size:15px;color:#999;cursor:pointer;';
-    document.getElementById('tabLogin').style.cssText = isRegister
-      ? 'flex:1;padding:10px;border:none;background:none;font-size:15px;color:#999;cursor:pointer;'
-      : 'flex:1;padding:10px;border:none;background:none;font-size:15px;font-weight:600;color:#007bff;border-bottom:2px solid #007bff;margin-bottom:-2px;cursor:pointer;';
-    document.getElementById('alertContainer').innerHTML = '';
-  }
+// ── Session ──────────────────────────────────────────────────────────────
+var currentUser = null;
 
-  function setRegBtn(state) {
-    const btn = document.getElementById('registerBtn');
-    if (state === 'loading') {
-      btn.disabled = true;
-      btn.style.background = '#22c55e';
-      btn.style.opacity = '0.8';
-      btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 0.8s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Creating account…</span>';
-    } else if (state === 'success') {
-      btn.disabled = true;
-      btn.style.background = '#16a34a';
-      btn.style.opacity = '1';
-      btn.innerHTML = '✅ Account created!';
-    } else {
-      btn.disabled = false;
-      btn.style.opacity = '1';
-      btn.style.background = '#22c55e';
-      btn.innerHTML = 'Create My Account';
-    }
-  }
+function loadSession() {
+  try {
+    var saved = localStorage.getItem('jh_user');
+    if (saved) currentUser = JSON.parse(saved);
+  } catch(e) {}
+}
 
-  async function register() {
-    const name = document.getElementById('regName').value.trim();
-    const email = document.getElementById('regEmail').value.trim();
-    const userId = parseInt(document.getElementById('regUserId').value);
-    if (!name || !email || !userId) { showAlert('Please fill in your name, email, and Telegram User ID'); return; }
-    if (!supabase) { initSupabase(); }
-    if (!supabase) { showAlert('Connection error. Please refresh.'); return; }
+function saveSession(user) {
+  currentUser = user;
+  try { localStorage.setItem('jh_user', JSON.stringify(user)); } catch(e) {}
+}
 
-    setRegBtn('loading');
-    document.getElementById('alertContainer').innerHTML = '';
+function clearSession() {
+  currentUser = null;
+  try { localStorage.removeItem('jh_user'); } catch(e) {}
+}
 
-    try {
-      const { data: existing, error: lookupError } = await supabase
-        .from('users').select('id').eq('user_id', userId).maybeSingle();
-      if (existing) {
-        showAlert('This Telegram User ID is already registered. Use the Login tab.');
-        setRegBtn('idle');
-        return;
-      }
-      if (lookupError) {
-        showAlert('Registration failed: ' + lookupError.message);
-        setRegBtn('idle');
-        return;
-      }
+// ── Tabs ──────────────────────────────────────────────────────────────────
+window.showTab = function(tab) {
+  document.getElementById('register-form').style.display = tab === 'register' ? '' : 'none';
+  document.getElementById('login-form').style.display = tab === 'login' ? '' : 'none';
+  document.querySelectorAll('.tab').forEach(function(t, i) {
+    t.classList.toggle('active', (tab === 'register') ? i === 0 : i === 1);
+  });
+};
 
-      const { data: user, error } = await supabase.from('users').insert({
-        user_id: userId,
-        name,
-        email,
-        kcal_target: parseInt(document.getElementById('regKcal').value) || 2550,
-        protein_target: parseInt(document.getElementById('regProtein').value) || 140,
-        carbs_target: parseInt(document.getElementById('regCarbs').value) || 325,
-        fat_target: parseInt(document.getElementById('regFat').value) || 75,
-        fiber_target: 35,
-      }).select().single();
+// ── Register ──────────────────────────────────────────────────────────────
+window.doRegister = async function() {
+  var name = document.getElementById('reg-name').value.trim();
+  var email = document.getElementById('reg-email').value.trim();
+  var userId = parseInt(document.getElementById('reg-userid').value, 10);
+  var kcal = parseInt(document.getElementById('reg-kcal').value, 10) || 2550;
+  var protein = parseInt(document.getElementById('reg-protein').value, 10) || 140;
+  var carbs = parseInt(document.getElementById('reg-carbs').value, 10) || 325;
+  var fat = parseInt(document.getElementById('reg-fat').value, 10) || 75;
 
-      if (error) {
-        showAlert('Registration failed: ' + error.message);
-        setRegBtn('idle');
-        return;
-      }
+  var msgEl = document.getElementById('reg-msg');
+  msgEl.className = 'form-msg';
+  msgEl.style.display = 'none';
 
-      setRegBtn('success');
-      showAlert('You can now send food photos to the Telegram group.', 'success');
-      setTimeout(() => { currentUser = user; localStorage.setItem('jh_user', JSON.stringify(user)); showDashboard(); }, 2000);
-    } catch (e) {
-      showAlert('Registration failed: ' + (e.message || 'unexpected error'));
-      setRegBtn('idle');
-    }
-  }
+  if (!name) { showFormMsg('reg-msg', 'error', 'Enter your name.'); return; }
+  if (!email || !email.includes('@')) { showFormMsg('reg-msg', 'error', 'Enter a valid email.'); return; }
+  if (!userId || isNaN(userId)) { showFormMsg('reg-msg', 'error', 'Enter your Telegram User ID. Send /whoami to the bot to get it.'); return; }
 
-  async function login() {
-    const email = document.getElementById('emailInput').value.trim();
-    const userId = parseInt(document.getElementById('userIdInput').value);
-    if (!email || !userId) { showAlert('Please enter both email and Telegram User ID'); return; }
-    if (!supabase) { initSupabase(); }
-    if (!supabase) { showAlert('Connection error. Please refresh the page.'); return; }
+  setLoading('reg-btn', 'reg-btn-text', true, 'Creating account…');
 
-    const btn = document.querySelector('#loginForm .btn-primary');
-    btn.disabled = true;
-    btn.textContent = 'Logging in…';
-
-    const { data: user, error } = await supabase
-      .from('users').select('*').eq('user_id', userId).eq('email', email).single();
-
-    if (error || !user) {
-      btn.disabled = false;
-      btn.textContent = 'Login';
-      showAlert('User not found. Make sure you registered in the Telegram group.');
+  try {
+    var rows = await sbGet('users?user_id=eq.' + userId + '&select=id,name,email,user_id,kcal_target,protein_target,carbs_target,fat_target,fiber_target');
+    if (rows.length > 0) {
+      showFormMsg('reg-msg', 'error', 'This Telegram ID is already registered. Use "Sign in" instead.');
+      setLoading('reg-btn', 'reg-btn-text', false, 'Create account');
       return;
     }
-    currentUser = user;
-    localStorage.setItem('jh_user', JSON.stringify(user));
+
+    var created = await sbPost('users', {
+      user_id: userId,
+      name: name,
+      email: email,
+      kcal_target: kcal,
+      protein_target: protein,
+      carbs_target: carbs,
+      fat_target: fat,
+      fiber_target: 35
+    });
+
+    var user = created[0] || { user_id: userId, name: name, email: email, kcal_target: kcal, protein_target: protein, carbs_target: carbs, fat_target: fat, fiber_target: 35 };
+    saveSession(user);
+    document.getElementById('auth-panel').innerHTML =
+      '<div class="success-state">'
+      + '<div class="success-ring">✓</div>'
+      + '<div class="success-title">Welcome, ' + escHtml(name.split(' ')[0]) + '!</div>'
+      + '<div class="success-sub">Account created. Loading your dashboard…</div>'
+      + '<div class="success-dots"><span></span><span></span><span></span></div>'
+      + '</div>';
+    setTimeout(showDashboard, 1400);
+  } catch(err) {
+    var msg = err.message || 'Something went wrong.';
+    if (msg.includes('duplicate') || msg.includes('unique')) {
+      msg = 'This Telegram ID is already registered. Use "Sign in" instead.';
+    }
+    showFormMsg('reg-msg', 'error', msg);
+    setLoading('reg-btn', 'reg-btn-text', false, 'Create account');
+  }
+};
+
+// ── Login ──────────────────────────────────────────────────────────────────
+window.doLogin = async function() {
+  var userId = parseInt(document.getElementById('login-userid').value, 10);
+  if (!userId || isNaN(userId)) {
+    showFormMsg('login-msg', 'error', 'Enter your Telegram User ID.');
+    return;
+  }
+
+  setLoading('login-btn', 'login-btn-text', true, 'Signing in…');
+
+  try {
+    var rows = await sbGet('users?user_id=eq.' + userId + '&select=id,name,email,user_id,kcal_target,protein_target,carbs_target,fat_target,fiber_target');
+    if (rows.length === 0) {
+      showFormMsg('login-msg', 'error', 'No account found for that Telegram ID. Register first.');
+      setLoading('login-btn', 'login-btn-text', false, 'Sign in');
+      return;
+    }
+    saveSession(rows[0]);
+    showFormMsg('login-msg', 'success', 'Signed in! Loading your dashboard…');
+    setTimeout(showDashboard, 600);
+  } catch(err) {
+    showFormMsg('login-msg', 'error', err.message || 'Sign in failed.');
+    setLoading('login-btn', 'login-btn-text', false, 'Sign in');
+  }
+};
+
+// ── Logout ──────────────────────────────────────────────────────────────────
+window.doLogout = function() {
+  clearSession();
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('landing').style.display = '';
+};
+
+// ── Dashboard ──────────────────────────────────────────────────────────────
+async function showDashboard() {
+  if (!currentUser) return;
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('dashboard').style.display = '';
+
+  var u = currentUser;
+  document.getElementById('dash-name').textContent = getGreeting(u.name);
+  document.getElementById('dash-date').textContent = formatDate(new Date());
+
+  var today = todayStr();
+  var weekStart = dateMinusDays(6);
+
+  try {
+    var [todayMeals, weekMeals] = await Promise.all([
+      sbGet('meals?user_id=eq.' + u.user_id + '&date=eq.' + today + '&order=time.asc'),
+      sbGet('meals?user_id=eq.' + u.user_id + '&date=gte.' + weekStart + '&date=lte.' + today + '&select=date,calories')
+    ]);
+    renderDashboard(todayMeals, u);
+    renderChart(weekMeals, u);
+  } catch(err) {
+    renderDashboard([], u);
+    renderChart([], u);
+  }
+}
+
+function renderDashboard(meals, u) {
+  var totals = { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
+  meals.forEach(function(m) {
+    totals.calories += m.calories || 0;
+    totals.protein_g += parseFloat(m.protein_g) || 0;
+    totals.carbs_g += parseFloat(m.carbs_g) || 0;
+    totals.fat_g += parseFloat(m.fat_g) || 0;
+  });
+
+  var t = u.kcal_target || 2550;
+  var p = u.protein_target || 140;
+  var c = u.carbs_target || 325;
+  var f = u.fat_target || 75;
+
+  document.getElementById('s-kcal').textContent = Math.round(totals.calories);
+  document.getElementById('s-kcal-max').textContent = 'of ' + t + ' kcal';
+  document.getElementById('b-kcal').style.width = Math.min(100, (totals.calories / t) * 100) + '%';
+
+  document.getElementById('s-protein').textContent = Math.round(totals.protein_g) + 'g';
+  document.getElementById('s-protein-max').textContent = 'of ' + p + 'g';
+  document.getElementById('b-protein').style.width = Math.min(100, (totals.protein_g / p) * 100) + '%';
+
+  document.getElementById('s-carbs').textContent = Math.round(totals.carbs_g) + 'g';
+  document.getElementById('s-carbs-max').textContent = 'of ' + c + 'g';
+  document.getElementById('b-carbs').style.width = Math.min(100, (totals.carbs_g / c) * 100) + '%';
+
+  document.getElementById('s-fat').textContent = Math.round(totals.fat_g) + 'g';
+  document.getElementById('s-fat-max').textContent = 'of ' + f + 'g';
+  document.getElementById('b-fat').style.width = Math.min(100, (totals.fat_g / f) * 100) + '%';
+
+  var n = meals.length;
+  document.getElementById('meals-count').textContent = n + ' meal' + (n !== 1 ? 's' : '');
+
+  var listEl = document.getElementById('meals-list');
+  if (n === 0) {
+    listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🍽️</div><p>No meals logged today — send a food photo to the Telegram group!</p></div>';
+    return;
+  }
+
+  var icons = ['🥗','🍗','🥑','🍳','🌮','🥙','🍜','🍱','🫙','🥩'];
+  listEl.innerHTML = meals.map(function(m, i) {
+    var icon = icons[i % icons.length];
+    var time = m.time ? m.time.slice(0,5) : '';
+    return '<div class="meal-item">'
+      + '<div class="meal-icon">' + icon + '</div>'
+      + '<div class="meal-info">'
+      + '<div class="meal-desc">' + escHtml(m.description) + '</div>'
+      + '<div class="meal-time">' + time + '</div>'
+      + '</div>'
+      + '<div class="meal-kcal">' + (m.calories || 0) + ' kcal</div>'
+      + '</div>';
+  }).join('');
+}
+
+// ── Calorie chart ──────────────────────────────────────────────────────────
+var _chart = null;
+
+function renderChart(meals, u) {
+  var target = u.kcal_target || 2550;
+  var days = [], labels = [], calsByDay = {};
+
+  for (var i = 6; i >= 0; i--) {
+    var d = new Date();
+    d.setDate(d.getDate() - i);
+    var ds = d.toISOString().split('T')[0];
+    days.push(ds);
+    labels.push(i === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' }));
+    calsByDay[ds] = 0;
+  }
+  meals.forEach(function(m) { if (calsByDay[m.date] !== undefined) calsByDay[m.date] += (m.calories || 0); });
+
+  var data = days.map(function(d) { return calsByDay[d]; });
+  var colors = days.map(function(d, i) { return i === 6 ? 'rgba(108,99,255,0.85)' : 'rgba(108,99,255,0.35)'; });
+  var borders = days.map(function(d, i) { return i === 6 ? '#6c63ff' : 'rgba(108,99,255,0.6)'; });
+
+  if (_chart) { _chart.destroy(); _chart = null; }
+
+  var ctx = document.getElementById('calorie-chart').getContext('2d');
+  _chart = new Chart(ctx, {
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Calories',
+          data: data,
+          backgroundColor: colors,
+          borderColor: borders,
+          borderWidth: 1,
+          borderRadius: 6,
+          order: 2
+        },
+        {
+          type: 'line',
+          label: 'Target',
+          data: days.map(function() { return target; }),
+          borderColor: 'rgba(239,68,68,0.55)',
+          borderDash: [5, 4],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return ctx.dataset.label === 'Target'
+                ? 'Target: ' + target + ' kcal'
+                : ctx.raw + ' kcal';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#8b8ba0', font: { size: 12, family: 'Inter' } },
+          border: { display: false }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#8b8ba0', font: { size: 12, family: 'Inter' }, maxTicksLimit: 5 },
+          border: { display: false },
+          min: 0,
+          suggestedMax: Math.max(target * 1.1, Math.max.apply(null, data.concat([100])))
+        }
+      }
+    }
+  });
+}
+
+// ── Demo animation ──────────────────────────────────────────────────────────
+var demoMessages = [
+  { type: 'user', sender: 'Robin', text: null, photo: true, time: '12:04' },
+  { type: 'bot', text: '🔍 Analysing…', time: '12:04' },
+  {
+    type: 'bot',
+    text: '<div class="macro-line">🍱 <strong>Grilled chicken + rice + salad</strong></div>'
+       + '<div class="macro-line">━━━━━━━━━━━━━━━━</div>'
+       + '<div class="macro-line">🔥 <strong>580 kcal</strong>  |  🥩 52g protein</div>'
+       + '<div class="macro-line">🌾 44g carbs  |  🫒 14g fat</div>'
+       + '<div class="macro-line" style="margin-top:8px;color:#8b8ba0;">Remaining today:</div>'
+       + '<div class="macro-line">kcal 1970 · protein 88g · carbs 281g</div>',
+    time: '12:04'
+  }
+];
+
+var demoIdx = 0;
+var demoLoop = null;
+
+function runDemo() {
+  var chat = document.getElementById('demo-chat');
+  chat.innerHTML = '';
+  demoIdx = 0;
+  clearInterval(demoLoop);
+
+  function addNext() {
+    if (demoIdx >= demoMessages.length) {
+      setTimeout(function() { chat.innerHTML = ''; demoIdx = 0; }, 2000);
+      return;
+    }
+    var m = demoMessages[demoIdx++];
+    var el = document.createElement('div');
+    el.className = 'msg ' + m.type;
+    var inner = '';
+    if (m.type === 'user') {
+      inner += '<div class="msg-sender">' + escHtml(m.sender) + '</div>';
+    }
+    inner += '<div class="msg-bubble">';
+    if (m.photo) {
+      inner += '<div class="food-img">🍗</div>';
+      inner += '<div style="font-size:13px;color:rgba(255,255,255,0.7);">lunch.jpg</div>';
+    } else {
+      inner += m.text;
+    }
+    inner += '</div>';
+    inner += '<div class="msg-time">' + m.time + '</div>';
+    el.innerHTML = inner;
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(8px)';
+    el.style.transition = 'opacity 0.3s, transform 0.3s';
+    chat.appendChild(el);
+    requestAnimationFrame(function() {
+      setTimeout(function() {
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+      }, 20);
+    });
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  addNext();
+  demoLoop = setInterval(function() {
+    if (demoIdx < demoMessages.length) {
+      addNext();
+    } else {
+      clearInterval(demoLoop);
+      setTimeout(runDemo, 3000);
+    }
+  }, 1400);
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function showFormMsg(id, type, text) {
+  var el = document.getElementById(id);
+  el.className = 'form-msg ' + type;
+  el.textContent = text;
+}
+
+function setLoading(btnId, textId, loading, text) {
+  var btn = document.getElementById(btnId);
+  var span = document.getElementById(textId);
+  btn.disabled = loading;
+  span.textContent = text;
+  var spinner = btn.querySelector('.spinner');
+  if (loading) {
+    if (!spinner) {
+      var s = document.createElement('div');
+      s.className = 'spinner';
+      btn.insertBefore(s, span);
+    }
+  } else {
+    if (spinner) spinner.remove();
+  }
+}
+
+function todayStr() {
+  var d = new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+
+function dateMinusDays(n) {
+  var d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+
+function pad(n) { return n < 10 ? '0'+n : ''+n; }
+
+function formatDate(d) {
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+function getGreeting(name) {
+  var h = new Date().getHours();
+  var prefix = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  return prefix + (name ? ', ' + name.split(' ')[0] : '') + ' 👋';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', function() {
+  loadSession();
+  if (currentUser) {
     showDashboard();
+  } else {
+    runDemo();
   }
-
-  function showDashboard() {
-    document.getElementById('introSection').style.display = 'none';
-    document.getElementById('dashboard').classList.add('active');
-    document.getElementById('dashName').textContent = `Welcome back, ${currentUser.name}! 👋`;
-    document.getElementById('dashDate').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    loadTodaysData();
-  }
-
-  async function loadTodaysData() {
-    const today = new Date().toISOString().split('T')[0];
-    const { data: meals, error } = await supabase
-      .from('meals').select('*').eq('user_id', currentUser.user_id).eq('date', today).order('time');
-    if (error) { console.error(error); return; }
-    renderDashboard(meals);
-  }
-
-  function renderDashboard(meals) {
-    const t = { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 };
-    meals.forEach(m => { t.calories += m.calories||0; t.protein_g += m.protein_g||0; t.carbs_g += m.carbs_g||0; t.fat_g += m.fat_g||0; t.fiber_g += m.fiber_g||0; });
-    const r = n => Math.round(n * 10) / 10;
-    Object.keys(t).forEach(k => t[k] = r(t[k]));
-
-    const u = currentUser;
-    document.getElementById('stats').innerHTML = `
-      <div class="stat-card kcal"><div class="stat-label">Calories</div><div class="stat-value">${t.calories}</div><div class="stat-remaining">${u.kcal_target - t.calories} remaining</div></div>
-      <div class="stat-card protein"><div class="stat-label">Protein</div><div class="stat-value">${t.protein_g}g</div><div class="stat-remaining">${u.protein_target - t.protein_g}g remaining</div></div>
-      <div class="stat-card carbs"><div class="stat-label">Carbs</div><div class="stat-value">${t.carbs_g}g</div><div class="stat-remaining">${u.carbs_target - t.carbs_g}g remaining</div></div>
-      <div class="stat-card fat"><div class="stat-label">Fat</div><div class="stat-value">${t.fat_g}g</div><div class="stat-remaining">${u.fat_target - t.fat_g}g remaining</div></div>
-      <div class="stat-card fiber"><div class="stat-label">Fiber</div><div class="stat-value">${t.fiber_g}g</div><div class="stat-remaining">${u.fiber_target - t.fiber_g}g remaining</div></div>`;
-
-    document.getElementById('mealsList').innerHTML = meals.length === 0
-      ? `<div class="empty-state"><div class="icon">📸</div><p>No meals logged today.<br>Send a photo to the Telegram group to get started!</p></div>`
-      : meals.map(m => `
-          <div class="meal-item">
-            <div class="meal-time">⏰ ${m.time}</div>
-            <div class="meal-desc">${m.description}</div>
-            <div class="meal-macros">
-              <span><strong>${m.calories}</strong> cal</span>
-              <span><strong>${m.protein_g}g</strong> protein</span>
-              <span><strong>${m.carbs_g}g</strong> carbs</span>
-              <span><strong>${m.fat_g}g</strong> fat</span>
-            </div>
-          </div>`).join('');
-  }
-
-  function logout() {
-    currentUser = null;
-    localStorage.removeItem('jh_user');
-    document.getElementById('introSection').style.display = 'block';
-    document.getElementById('dashboard').classList.remove('active');
-    document.getElementById('emailInput').value = '';
-    document.getElementById('userIdInput').value = '';
-    setTimeout(runDemo, 800);
-  }
+});
 </script>
 </body>
 </html>
