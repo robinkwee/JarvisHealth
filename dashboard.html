@@ -210,9 +210,14 @@
 <script>
   const SUPABASE_URL = 'https://qitvgvjfpisvfzhzzxlm.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpdHZndmpmcGlzdmZ6aHp6eGxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0OTQ2NzMsImV4cCI6MjA5NTA3MDY3M30.89Vm603qudaGYM9xltU-NcA7ZyqTkRLyB4S7Q5dIUmE';
-  const { createClient } = window.supabase;
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  let supabase = null;
   let currentUser = null;
+
+  function initSupabase() {
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    } catch(e) { console.warn('Supabase init failed:', e); }
+  }
 
   // ---------- Telegram Demo ----------
   const demoMessages = [
@@ -261,10 +266,12 @@
 
         if (msg.type === 'typing') {
           const el = document.createElement('div');
-          el.className = 'msg bot tg-typing';
+          el.className = 'msg bot';
+          el.style.opacity = '0';
+          el.style.transition = 'opacity 0.3s ease';
           el.innerHTML = `<div class="typing"><span></span><span></span><span></span></div>`;
           body.appendChild(el);
-          requestAnimationFrame(() => el.classList.add('visible'));
+          setTimeout(() => el.style.opacity = '1', 30);
         } else if (msg.type === 'user') {
           const el = document.createElement('div');
           el.className = 'msg user';
@@ -276,7 +283,7 @@
               <div class="msg-time">${msg.time}</div>
             </div>`;
           body.appendChild(el);
-          requestAnimationFrame(() => el.classList.add('visible'));
+          setTimeout(() => el.classList.add('visible'), 30);
         } else if (msg.type === 'bot') {
           const rows = msg.remaining.map(r =>
             `<div class="remaining-row"><span>${r.label}</span><span class="${r.cls}">${r.value}</span></div>`
@@ -295,7 +302,7 @@
               <div class="msg-time">${msg.time}</div>
             </div>`;
           body.appendChild(el);
-          requestAnimationFrame(() => el.classList.add('visible'));
+          setTimeout(() => el.classList.add('visible'), 30);
         }
 
         body.scrollTop = body.scrollHeight;
@@ -304,8 +311,11 @@
     });
   }
 
-  // Auto-play on load
-  window.addEventListener('load', () => setTimeout(runDemo, 800));
+  // Auto-play on load and init Supabase
+  window.addEventListener('load', () => {
+    initSupabase();
+    setTimeout(runDemo, 800);
+  });
 
   // ---------- Auth ----------
   function showAlert(msg) {
@@ -317,6 +327,8 @@
     const email = document.getElementById('emailInput').value.trim();
     const userId = parseInt(document.getElementById('userIdInput').value);
     if (!email || !userId) { showAlert('Please enter both email and Telegram User ID'); return; }
+    if (!supabase) { initSupabase(); }
+    if (!supabase) { showAlert('Connection error. Please refresh the page.'); return; }
 
     const { data: user, error } = await supabase
       .from('users').select('*').eq('user_id', userId).eq('email', email).single();
