@@ -117,6 +117,8 @@
     .empty-state { text-align: center; padding: 40px 0; color: #bbb; font-size: 15px; }
     .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
 
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     @media (max-width: 700px) {
       .intro-grid { grid-template-columns: 1fr; }
       .stats { grid-template-columns: repeat(2, 1fr); }
@@ -234,7 +236,7 @@
           <div style="background:#22c55e;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">3</div>
           <strong style="font-size:16px;">Create your account</strong>
         </div>
-        <button class="btn-primary" onclick="register()" style="background:#22c55e;">✅ Create My Account</button>
+        <button id="registerBtn" class="btn-primary" onclick="register()" style="background:#22c55e;">Create My Account</button>
       </div>
 
       <!-- Login form -->
@@ -402,32 +404,75 @@
     document.getElementById('alertContainer').innerHTML = '';
   }
 
+  function setRegBtn(state) {
+    const btn = document.getElementById('registerBtn');
+    if (state === 'loading') {
+      btn.disabled = true;
+      btn.style.background = '#22c55e';
+      btn.style.opacity = '0.8';
+      btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 0.8s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Creating account…</span>';
+    } else if (state === 'success') {
+      btn.disabled = true;
+      btn.style.background = '#16a34a';
+      btn.style.opacity = '1';
+      btn.innerHTML = '✅ Account created!';
+    } else {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.background = '#22c55e';
+      btn.innerHTML = 'Create My Account';
+    }
+  }
+
   async function register() {
     const name = document.getElementById('regName').value.trim();
     const email = document.getElementById('regEmail').value.trim();
     const userId = parseInt(document.getElementById('regUserId').value);
-    if (!name || !email || !userId) { showAlert('Name, email, and Telegram User ID are required'); return; }
+    if (!name || !email || !userId) { showAlert('Please fill in your name, email, and Telegram User ID'); return; }
     if (!supabase) { initSupabase(); }
     if (!supabase) { showAlert('Connection error. Please refresh.'); return; }
 
-    // Check if already registered
-    const { data: existing } = await supabase.from('users').select('id').eq('user_id', userId).single();
-    if (existing) { showAlert('This Telegram User ID is already registered. Use the Login tab.'); return; }
+    setRegBtn('loading');
+    document.getElementById('alertContainer').innerHTML = '';
 
-    const { data: user, error } = await supabase.from('users').insert({
-      user_id: userId,
-      name,
-      email,
-      kcal_target: parseInt(document.getElementById('regKcal').value) || 2550,
-      protein_target: parseInt(document.getElementById('regProtein').value) || 140,
-      carbs_target: parseInt(document.getElementById('regCarbs').value) || 325,
-      fat_target: parseInt(document.getElementById('regFat').value) || 75,
-      fiber_target: 35,
-    }).select().single();
+    try {
+      const { data: existing, error: lookupError } = await supabase
+        .from('users').select('id').eq('user_id', userId).maybeSingle();
+      if (existing) {
+        showAlert('This Telegram User ID is already registered. Use the Login tab.');
+        setRegBtn('idle');
+        return;
+      }
+      if (lookupError) {
+        showAlert('Registration failed: ' + lookupError.message);
+        setRegBtn('idle');
+        return;
+      }
 
-    if (error) { showAlert('Registration failed: ' + error.message); return; }
-    showAlert('✅ Account created! You can now send food photos to the Telegram group.', 'success');
-    setTimeout(() => { currentUser = user; showDashboard(); }, 1500);
+      const { data: user, error } = await supabase.from('users').insert({
+        user_id: userId,
+        name,
+        email,
+        kcal_target: parseInt(document.getElementById('regKcal').value) || 2550,
+        protein_target: parseInt(document.getElementById('regProtein').value) || 140,
+        carbs_target: parseInt(document.getElementById('regCarbs').value) || 325,
+        fat_target: parseInt(document.getElementById('regFat').value) || 75,
+        fiber_target: 35,
+      }).select().single();
+
+      if (error) {
+        showAlert('Registration failed: ' + error.message);
+        setRegBtn('idle');
+        return;
+      }
+
+      setRegBtn('success');
+      showAlert('You can now send food photos to the Telegram group.', 'success');
+      setTimeout(() => { currentUser = user; showDashboard(); }, 2000);
+    } catch (e) {
+      showAlert('Registration failed: ' + (e.message || 'unexpected error'));
+      setRegBtn('idle');
+    }
   }
 
   async function login() {
