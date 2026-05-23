@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JarvisHealth — Track food with friends</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -846,9 +845,7 @@ function renderDashboard(meals, u) {
   }).join('');
 }
 
-// ── Calorie chart ──────────────────────────────────────────────────────────
-var _chart = null;
-
+// ── Calorie chart (hand-rolled canvas, no dependencies) ────────────────────
 function renderChart(meals, u) {
   var target = u.kcal_target || 2550;
   var days = [], labels = [], calsByDay = {};
@@ -856,78 +853,100 @@ function renderChart(meals, u) {
   for (var i = 6; i >= 0; i--) {
     var d = new Date();
     d.setDate(d.getDate() - i);
-    var ds = d.toISOString().split('T')[0];
+    var ds = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
     days.push(ds);
     labels.push(i === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' }));
     calsByDay[ds] = 0;
   }
   meals.forEach(function(m) { if (calsByDay[m.date] !== undefined) calsByDay[m.date] += (m.calories || 0); });
+  var data = days.map(function(ds) { return calsByDay[ds]; });
 
-  var data = days.map(function(d) { return calsByDay[d]; });
-  var colors = days.map(function(d, i) { return i === 6 ? 'rgba(108,99,255,0.85)' : 'rgba(108,99,255,0.35)'; });
-  var borders = days.map(function(d, i) { return i === 6 ? '#6c63ff' : 'rgba(108,99,255,0.6)'; });
+  var canvas = document.getElementById('calorie-chart');
+  var dpr = window.devicePixelRatio || 1;
+  var rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width  = rect.width  * dpr;
+  canvas.height = 200 * dpr;
+  canvas.style.width  = rect.width + 'px';
+  canvas.style.height = '200px';
 
-  if (_chart) { _chart.destroy(); _chart = null; }
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
 
-  var ctx = document.getElementById('calorie-chart').getContext('2d');
-  _chart = new Chart(ctx, {
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          type: 'bar',
-          label: 'Calories',
-          data: data,
-          backgroundColor: colors,
-          borderColor: borders,
-          borderWidth: 1,
-          borderRadius: 6,
-          order: 2
-        },
-        {
-          type: 'line',
-          label: 'Target',
-          data: days.map(function() { return target; }),
-          borderColor: 'rgba(239,68,68,0.55)',
-          borderDash: [5, 4],
-          borderWidth: 1.5,
-          pointRadius: 0,
-          fill: false,
-          order: 1
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              return ctx.dataset.label === 'Target'
-                ? 'Target: ' + target + ' kcal'
-                : ctx.raw + ' kcal';
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: { color: 'rgba(255,255,255,0.04)' },
-          ticks: { color: '#8b8ba0', font: { size: 12, family: 'Inter' } },
-          border: { display: false }
-        },
-        y: {
-          grid: { color: 'rgba(255,255,255,0.04)' },
-          ticks: { color: '#8b8ba0', font: { size: 12, family: 'Inter' }, maxTicksLimit: 5 },
-          border: { display: false },
-          min: 0,
-          suggestedMax: Math.max(target * 1.1, Math.max.apply(null, data.concat([100])))
-        }
-      }
-    }
-  });
+  var W = rect.width, H = 200;
+  var padL = 44, padR = 16, padT = 16, padB = 32;
+  var chartW = W - padL - padR;
+  var chartH = H - padT - padB;
+
+  var maxVal = Math.max(target * 1.1, Math.max.apply(null, data.concat([100])));
+  var nTicks = 4;
+
+  function toY(v) { return padT + chartH - (v / maxVal) * chartH; }
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid lines + y labels
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.font = '11px Inter, sans-serif';
+  ctx.fillStyle = '#8b8ba0';
+  for (var t = 0; t <= nTicks; t++) {
+    var v = (maxVal / nTicks) * t;
+    var y = toY(v);
+    ctx.fillText(v >= 1000 ? (v/1000).toFixed(1)+'k' : Math.round(v), padL - 6, y);
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    ctx.moveTo(padL, y);
+    ctx.lineTo(padL + chartW, y);
+    ctx.stroke();
+  }
+
+  // Bars
+  var n = days.length;
+  var barGap = 6;
+  var barW = (chartW - barGap * (n - 1)) / n;
+  for (var i = 0; i < n; i++) {
+    var x = padL + i * (barW + barGap);
+    var barH = (data[i] / maxVal) * chartH;
+    var y0 = padT + chartH;
+    var isToday = i === n - 1;
+    ctx.fillStyle = isToday ? 'rgba(108,99,255,0.85)' : 'rgba(108,99,255,0.35)';
+    var r = 4;
+    var bx = x, by = y0 - barH, bw = barW, bh = barH;
+    if (bh < 1) { bh = 0; }
+    ctx.beginPath();
+    ctx.moveTo(bx + r, by);
+    ctx.lineTo(bx + bw - r, by);
+    ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+    ctx.lineTo(bx + bw, by + bh);
+    ctx.lineTo(bx, by + bh);
+    ctx.lineTo(bx, by + r);
+    ctx.quadraticCurveTo(bx, by, bx + r, by);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Target dashed line
+  var ty = toY(target);
+  ctx.beginPath();
+  ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = 'rgba(239,68,68,0.6)';
+  ctx.lineWidth = 1.5;
+  ctx.moveTo(padL, ty);
+  ctx.lineTo(padL + chartW, ty);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // X labels
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#8b8ba0';
+  ctx.font = '11px Inter, sans-serif';
+  for (var i = 0; i < n; i++) {
+    var cx = padL + i * (barW + barGap) + barW / 2;
+    ctx.fillStyle = i === n - 1 ? '#c4c4d4' : '#8b8ba0';
+    ctx.fillText(labels[i], cx, padT + chartH + 8);
+  }
 }
 
 // ── Demo animation ──────────────────────────────────────────────────────────
