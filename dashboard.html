@@ -182,12 +182,32 @@
 
       <!-- Register form -->
       <div id="registerForm">
-        <p style="color:#555;margin-bottom:18px;font-size:14px;line-height:1.6;">
-          <strong>Step 1:</strong> Message the Telegram bot with <code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;">/start</code> — it will reply with your User ID.<br>
-          <strong>Step 2:</strong> Fill in this form to create your account.
-        </p>
+
+        <!-- Step 1 -->
+        <div style="background:#f0f9ff;border:2px solid #0ea5e9;border-radius:10px;padding:18px;margin-bottom:20px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div style="background:#0ea5e9;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">1</div>
+            <strong style="font-size:16px;">Open the Telegram bot and send it a message</strong>
+          </div>
+          <a href="https://t.me/RKJarvisHealthBot" target="_blank"
+            style="display:flex;align-items:center;justify-content:center;gap:10px;background:#0088cc;color:white;text-decoration:none;padding:14px;border-radius:8px;font-size:16px;font-weight:600;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.32 13.617l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.828.942z"/></svg>
+            Open @RKJarvisHealthBot on Telegram
+          </a>
+          <p style="color:#0369a1;font-size:13px;margin-top:10px;text-align:center;">
+            Once it opens, tap <strong>Start</strong> or type <code style="background:#dbeafe;padding:1px 5px;border-radius:3px;">/start</code> — the bot will reply with your User ID number. Copy that number.
+          </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div style="margin-bottom:6px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div style="background:#6366f1;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">2</div>
+            <strong style="font-size:16px;">Fill in your details</strong>
+          </div>
+        </div>
         <div class="form-group">
-          <label>Full Name</label>
+          <label>Your Name</label>
           <input type="text" id="regName" placeholder="Jane Smith">
         </div>
         <div class="form-group">
@@ -195,12 +215,12 @@
           <input type="email" id="regEmail" placeholder="jane@email.com">
         </div>
         <div class="form-group">
-          <label>Telegram User ID</label>
-          <input type="number" id="regUserId" placeholder="123456789">
-          <small>Send <strong>/start</strong> or <strong>/whoami</strong> to the bot — it replies with your ID</small>
+          <label>Your Telegram User ID <span style="color:#999;font-weight:400;">(from the bot reply in Step 1)</span></label>
+          <input type="number" id="regUserId" placeholder="e.g. 123456789" style="font-size:18px;letter-spacing:1px;">
+          <small>It's a number — paste it exactly as the bot sent it</small>
         </div>
         <details style="margin-bottom:16px;">
-          <summary style="color:#666;font-size:13px;cursor:pointer;">Optional: set custom calorie targets</summary>
+          <summary style="color:#666;font-size:13px;cursor:pointer;">⚙️ Optional: customise daily targets (defaults are fine to start)</summary>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
             <div class="form-group"><label style="font-size:13px;">Calories (kcal)</label><input type="number" id="regKcal" placeholder="2550"></div>
             <div class="form-group"><label style="font-size:13px;">Protein (g)</label><input type="number" id="regProtein" placeholder="140"></div>
@@ -208,7 +228,13 @@
             <div class="form-group"><label style="font-size:13px;">Fat (g)</label><input type="number" id="regFat" placeholder="75"></div>
           </div>
         </details>
-        <button class="btn-primary" onclick="register()">Create Account</button>
+
+        <!-- Step 3 -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <div style="background:#22c55e;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">3</div>
+          <strong style="font-size:16px;">Create your account</strong>
+        </div>
+        <button class="btn-primary" onclick="register()" style="background:#22c55e;">✅ Create My Account</button>
       </div>
 
       <!-- Login form -->
@@ -220,7 +246,7 @@
         <div class="form-group">
           <label>Telegram User ID</label>
           <input type="number" id="userIdInput" placeholder="123456789">
-          <small>Don't know your ID? Send <strong>/whoami</strong> to the bot</small>
+          <small>Don't know your ID? <a href="https://t.me/RKJarvisHealthBot" target="_blank">Open the bot</a> and send <strong>/whoami</strong></small>
         </div>
         <button class="btn-primary" onclick="login()">Login</button>
       </div>
