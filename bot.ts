@@ -3,8 +3,6 @@ import { Database } from "bun:sqlite";
 
 const BOT_TOKEN = process.env.BOT_TOKEN!;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY!;
-const SHEETS_WEBHOOK = process.env.SHEETS_WEBHOOK || ""; // Google Apps Script URL (optional)
-
 const TARGETS = {
   calories: parseInt(process.env.TARGET_CALORIES || "2000"),
   protein: parseInt(process.env.TARGET_PROTEIN || "150"),
@@ -156,28 +154,6 @@ If no food is visible, return: {"error": "No food detected"}`,
   }
 }
 
-// --- Fetch targets from Settings sheet ---
-async function fetchTargetsFromSheets(): Promise<boolean> {
-  if (!SHEETS_WEBHOOK) return false;
-  try {
-    const url = SHEETS_WEBHOOK.replace(/(\?.*)?$/, "?action=settings");
-    const res = await fetch(url, { redirect: "follow" });
-    const json = await res.json() as { ok: boolean; settings?: Record<string, unknown> };
-    if (!json.ok || !json.settings) return false;
-    const s = json.settings;
-    if (s["KCal"])      TARGETS.calories = parseFloat(String(s["KCal"]))      || TARGETS.calories;
-    if (s["protein_g"]) TARGETS.protein  = parseFloat(String(s["protein_g"])) || TARGETS.protein;
-    if (s["carb_g"])    TARGETS.carbs    = parseFloat(String(s["carb_g"]))    || TARGETS.carbs;
-    if (s["fat_g"])     TARGETS.fat      = parseFloat(String(s["fat_g"]))     || TARGETS.fat;
-    if (s["fiber_g"])   TARGETS.fiber    = parseFloat(String(s["fiber_g"]))   || TARGETS.fiber;
-    console.log(`📊 Targets from Sheets: ${TARGETS.calories} kcal | ${TARGETS.protein}g P | ${TARGETS.carbs}g C | ${TARGETS.fat}g F | ${TARGETS.fiber}g Fiber`);
-    return true;
-  } catch (err) {
-    console.error("Failed to fetch targets from Sheets:", err);
-    return false;
-  }
-}
-
 // --- Daily totals ---
 function getDailyTotals(chatId: number, date: string) {
   return db.prepare(`
@@ -262,7 +238,7 @@ async function logToSupabase(userId: number, estimate: MacroEstimate, photoMsgId
   }
 }
 
-// --- Log to DB + optional Sheets webhook ---
+// --- Log to local DB ---
 function logMeal(chatId: number, estimate: MacroEstimate, photoMsgId: number) {
   const now = new Date();
   const date = now.toISOString().split("T")[0];
@@ -272,19 +248,6 @@ function logMeal(chatId: number, estimate: MacroEstimate, photoMsgId: number) {
     INSERT INTO food_log (date, time, description, calories, protein_g, carbs_g, fat_g, fiber_g, photo_msg_id, chat_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(date, time, estimate.description, estimate.calories, estimate.protein_g, estimate.carbs_g, estimate.fat_g, estimate.fiber_g, photoMsgId, chatId);
-
-  if (SHEETS_WEBHOOK) {
-    // Apps Script requires two-step: POST gets a redirect URL, then GET that URL
-    fetch(SHEETS_WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, time, ...estimate, photo_msg_id: photoMsgId }),
-      redirect: "manual",
-    }).then(r => {
-      const loc = r.headers.get("location");
-      if (loc) fetch(loc).catch(() => {});
-    }).catch(() => {});
-  }
 }
 
 // --- Message handlers ---
@@ -402,7 +365,6 @@ async function handleText(chatId: number, text: string, userId?: number) {
   }
 
   if (lower === "/targets") {
-    await fetchTargetsFromSheets();
     await sendMessage(chatId,
       `*Daily Targets*\n\n` +
       `🔥 Calories: ${TARGETS.calories} kcal\n` +
@@ -515,10 +477,5 @@ async function poll() {
 }
 
 console.log("🥗 Calorie Tracker Bot started");
-if (SHEETS_WEBHOOK) {
-  console.log("📊 Google Sheets webhook configured — loading targets from Settings sheet...");
-  await fetchTargetsFromSheets();
-} else {
-  console.log(`Targets: ${TARGETS.calories} kcal | ${TARGETS.protein}g protein | ${TARGETS.carbs}g carbs | ${TARGETS.fat}g fat`);
-}
+console.log(`Targets: ${TARGETS.calories} kcal | ${TARGETS.protein}g protein | ${TARGETS.carbs}g carbs | ${TARGETS.fat}g fat`);
 poll();
