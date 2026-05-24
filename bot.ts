@@ -3,31 +3,41 @@ import { Database } from "bun:sqlite";
 
 const BOT_TOKEN = process.env.BOT_TOKEN!;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY!;
-const TARGETS = {
-  calories: parseInt(process.env.TARGET_CALORIES || "2000"),
-  protein: parseInt(process.env.TARGET_PROTEIN || "150"),
-  carbs: parseInt(process.env.TARGET_CARBS || "200"),
-  fat: parseInt(process.env.TARGET_FAT || "65"),
-  fiber: parseInt(process.env.TARGET_FIBER || "25"),
-};
-
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY!;
 
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
+const SB_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` };
+
 async function getRegisteredUser(userId: number) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?user_id=eq.${userId}&limit=1`, {
-    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` },
-  });
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?user_id=eq.${userId}&limit=1`, { headers: SB_HEADERS });
   const rows = await res.json() as any[];
   return rows[0] ?? null;
+}
+
+const userCache = new Map<number, { user: any; ts: number }>();
+const USER_CACHE_TTL = 5 * 60 * 1000;
+
+async function getCachedUser(userId: number) {
+  const cached = userCache.get(userId);
+  if (cached && Date.now() - cached.ts < USER_CACHE_TTL) return cached.user;
+  const user = await getRegisteredUser(userId);
+  if (user) userCache.set(userId, { user, ts: Date.now() });
+  return user;
 }
 
 // --- Database setup ---
 const db = new Database(import.meta.dir + "/log.db");
 db.exec(`
+  CREATE TABLE IF NOT EXISTS poll_state (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS logged_photos (
+    photo_msg_id INTEGER PRIMARY KEY
+  );
   CREATE TABLE IF NOT EXISTS food_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT NOT NULL,
@@ -42,10 +52,8 @@ db.exec(`
     chat_id INTEGER NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
-  CREATE TABLE IF NOT EXISTS poll_state (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
+  INSERT OR IGNORE INTO logged_photos (photo_msg_id)
+    SELECT photo_msg_id FROM food_log WHERE photo_msg_id IS NOT NULL;
 `);
 
 function getOffset(): number {
@@ -56,7 +64,10 @@ function saveOffset(val: number) {
   db.prepare(`INSERT OR REPLACE INTO poll_state (key, value) VALUES ('offset', ?)`).run(String(val));
 }
 function alreadyLogged(photoMsgId: number): boolean {
-  return !!db.prepare(`SELECT id FROM food_log WHERE photo_msg_id = ?`).get(photoMsgId);
+  return !!db.prepare(`SELECT photo_msg_id FROM logged_photos WHERE photo_msg_id = ?`).get(photoMsgId);
+}
+function markPhotoLogged(photoMsgId: number) {
+  db.prepare(`INSERT OR IGNORE INTO logged_photos (photo_msg_id) VALUES (?)`).run(photoMsgId);
 }
 
 // Pending confirmations: msg_id -> macro data
@@ -154,18 +165,22 @@ If no food is visible, return: {"error": "No food detected"}`,
   }
 }
 
-// --- Daily totals ---
-function getDailyTotals(chatId: number, date: string) {
-  return db.prepare(`
-    SELECT
-      SUM(calories) as calories,
-      SUM(protein_g) as protein,
-      SUM(carbs_g) as carbs,
-      SUM(fat_g) as fat,
-      SUM(fiber_g) as fiber,
-      COUNT(*) as meals
-    FROM food_log WHERE date = ? AND chat_id = ?
-  `).get(date, chatId) as { calories: number; protein: number; carbs: number; fat: number; fiber: number; meals: number };
+// --- Daily totals (reads from Supabase) ---
+async function getDailyTotals(userId: number, date: string) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/meals?user_id=eq.${userId}&date=eq.${date}&select=calories,protein_g,carbs_g,fat_g,fiber_g`,
+    { headers: SB_HEADERS }
+  );
+  const rows = await res.json() as any[];
+  if (!rows.length) return null;
+  return {
+    calories: rows.reduce((s: number, r: any) => s + (r.calories || 0), 0),
+    protein: rows.reduce((s: number, r: any) => s + (r.protein_g || 0), 0),
+    carbs: rows.reduce((s: number, r: any) => s + (r.carbs_g || 0), 0),
+    fat: rows.reduce((s: number, r: any) => s + (r.fat_g || 0), 0),
+    fiber: rows.reduce((s: number, r: any) => s + (r.fiber_g || 0), 0),
+    meals: rows.length,
+  };
 }
 
 function progressBar(current: number, target: number, width = 10): string {
@@ -174,30 +189,18 @@ function progressBar(current: number, target: number, width = 10): string {
   return "█".repeat(filled) + "░".repeat(width - filled);
 }
 
-function formatDailyTotal(chatId: number): string {
-  const today = new Date().toISOString().split("T")[0];
-  const t = getDailyTotals(chatId, today);
-  if (!t || !t.meals) return "No meals logged today yet.";
+async function formatDailyTotalForUser(userId: number, user: any): Promise<string> {
+  const date = new Date().toISOString().split("T")[0];
+  const t = await getDailyTotals(userId, date);
+  if (!t) return "No meals logged today yet.";
 
-  const calPct = Math.round((t.calories / TARGETS.calories) * 100);
-  return `*Today's Totals* (${t.meals} meal${t.meals !== 1 ? "s" : ""})\n\n` +
-    `🔥 Calories: ${Math.round(t.calories)} / ${TARGETS.calories} kcal (${calPct}%)\n` +
-    `${progressBar(t.calories, TARGETS.calories)}\n\n` +
-    `💪 Protein: ${Math.round(t.protein)}g / ${TARGETS.protein}g\n` +
-    `🍞 Carbs: ${Math.round(t.carbs)}g / ${TARGETS.carbs}g\n` +
-    `🥑 Fat: ${Math.round(t.fat)}g / ${TARGETS.fat}g\n` +
-    `🌿 Fiber: ${Math.round(t.fiber)}g / ${TARGETS.fiber}g`;
-}
-
-function formatDailyTotalForUser(chatId: number, user: any): string {
-  const today = new Date().toISOString().split("T")[0];
-  const t = getDailyTotals(chatId, today);
-  if (!t || !t.meals) return "No meals logged today yet.";
-
-  const targets = user
-    ? { calories: user.kcal_target, protein: user.protein_target, carbs: user.carbs_target, fat: user.fat_target, fiber: user.fiber_target }
-    : TARGETS;
-
+  const targets = {
+    calories: user.kcal_target,
+    protein: user.protein_target,
+    carbs: user.carbs_target,
+    fat: user.fat_target,
+    fiber: user.fiber_target,
+  };
   const calPct = Math.round((t.calories / targets.calories) * 100);
   return `*Today's Totals* (${t.meals} meal${t.meals !== 1 ? "s" : ""})\n\n` +
     `🔥 Calories: ${Math.round(t.calories)} / ${targets.calories} kcal (${calPct}%)\n` +
@@ -216,8 +219,7 @@ async function logToSupabase(userId: number, estimate: MacroEstimate, photoMsgId
     await fetch(`${SUPABASE_URL}/rest/v1/meals`, {
       method: "POST",
       headers: {
-        "apikey": SUPABASE_KEY,
-        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        ...SB_HEADERS,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -238,24 +240,17 @@ async function logToSupabase(userId: number, estimate: MacroEstimate, photoMsgId
   }
 }
 
-// --- Log to local DB ---
-function logMeal(chatId: number, estimate: MacroEstimate, photoMsgId: number) {
-  const now = new Date();
-  const date = now.toISOString().split("T")[0];
-  const time = now.toTimeString().split(" ")[0];
-
-  db.prepare(`
-    INSERT INTO food_log (date, time, description, calories, protein_g, carbs_g, fat_g, fiber_g, photo_msg_id, chat_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(date, time, estimate.description, estimate.calories, estimate.protein_g, estimate.carbs_g, estimate.fat_g, estimate.fiber_g, photoMsgId, chatId);
-}
-
 // --- Message handlers ---
 async function handlePhoto(chatId: number, msgId: number, photos: Array<{ file_id: string; width: number }>, userId: number) {
-  await sendMessage(chatId, "🔍 Analyzing your food...");
+  // Pick photo closest to 800px — enough resolution for food ID, ~60% fewer Vision tokens than 1280px
+  const photo = photos.slice().sort((a, b) => Math.abs(a.width - 800) - Math.abs(b.width - 800))[0];
 
-  const largest = photos.reduce((a, b) => (a.width > b.width ? a : b));
-  const imageBuffer = await downloadPhoto(largest.file_id);
+  // Parallelize: send typing indicator while downloading
+  const [, imageBuffer] = await Promise.all([
+    sendMessage(chatId, "🔍 Analyzing your food..."),
+    downloadPhoto(photo.file_id),
+  ]);
+
   const estimate = await analyzeFood(imageBuffer);
 
   if (!estimate) {
@@ -274,7 +269,6 @@ async function handlePhoto(chatId: number, msgId: number, photos: Array<{ file_i
   if (estimate.notes) text += `\n_Note: ${estimate.notes}_\n`;
   text += `\nLog this?`;
 
-  // Store pending confirmation (include userId so callback can write to Supabase)
   pending.set(msgId, { ...estimate, photoMsgId: msgId, userId });
 
   const replyMarkup = {
@@ -305,13 +299,11 @@ async function handleCallbackQuery(callbackQueryId: string, chatId: number, data
       await sendMessage(chatId, "⚠️ Already logged.");
       return;
     }
-    logMeal(chatId, estimate, estimate.photoMsgId);
-    // Fire-and-forget: write to Supabase without blocking the reply
+    markPhotoLogged(estimate.photoMsgId);
     logToSupabase(estimate.userId, estimate, estimate.photoMsgId).catch(console.error);
     pending.delete(msgId);
-    // Use user's personalized targets from Supabase for the totals message
-    const user = await getRegisteredUser(estimate.userId);
-    const totals = formatDailyTotalForUser(chatId, user);
+    const user = await getCachedUser(estimate.userId);
+    const totals = await formatDailyTotalForUser(estimate.userId, user);
     await sendMessage(chatId, `✅ Logged!\n\n${totals}`);
   } else if (action === "edit" && estimate) {
     await sendMessage(chatId, `✏️ *Edit macros for: ${estimate.description}*\n\nReply with corrections, e.g.:\n• \`calories 450\`\n• \`protein 35g\`\n• \`chicken breast 200g\`\n• \`all: 500 cal, 40p, 30c, 15f\``);
@@ -344,7 +336,13 @@ async function handleText(chatId: number, text: string, userId?: number) {
   }
 
   if (lower === "/today" || lower === "/t") {
-    await sendMessage(chatId, formatDailyTotal(chatId));
+    if (!userId) return;
+    const user = await getCachedUser(userId);
+    if (!user) {
+      await sendMessage(chatId, "You're not registered yet. Visit the web app to sign up.");
+      return;
+    }
+    await sendMessage(chatId, await formatDailyTotalForUser(userId, user));
     return;
   }
 
@@ -357,30 +355,28 @@ async function handleText(chatId: number, text: string, userId?: number) {
       "/start — welcome + your Telegram User ID\n" +
       "/whoami — show your Telegram User ID\n" +
       "/today — today's totals\n" +
-      "/targets — view daily targets\n" +
-      `/set calories 1800 — update a target\n` +
+      "/targets — view your daily targets\n" +
       "/help — this message"
     );
     return;
   }
 
   if (lower === "/targets") {
+    if (!userId) return;
+    const user = await getCachedUser(userId);
+    if (!user) {
+      await sendMessage(chatId, "You're not registered yet. Visit the web app to sign up.");
+      return;
+    }
     await sendMessage(chatId,
-      `*Daily Targets*\n\n` +
-      `🔥 Calories: ${TARGETS.calories} kcal\n` +
-      `💪 Protein: ${TARGETS.protein}g\n` +
-      `🍞 Carbs: ${TARGETS.carbs}g\n` +
-      `🥑 Fat: ${TARGETS.fat}g\n` +
-      `🌿 Fiber: ${TARGETS.fiber}g`
+      `*Your Daily Targets*\n\n` +
+      `🔥 Calories: ${user.kcal_target} kcal\n` +
+      `💪 Protein: ${user.protein_target}g\n` +
+      `🍞 Carbs: ${user.carbs_target}g\n` +
+      `🥑 Fat: ${user.fat_target}g\n` +
+      `🌿 Fiber: ${user.fiber_target}g\n\n` +
+      `_Update targets at the web app → Goals_`
     );
-    return;
-  }
-
-  const setMatch = text.match(/^\/set\s+(calories|protein|carbs|fat)\s+(\d+)/i);
-  if (setMatch) {
-    const key = setMatch[1].toLowerCase() as keyof typeof TARGETS;
-    TARGETS[key] = parseInt(setMatch[2]);
-    await sendMessage(chatId, `✅ Updated ${key} target to ${TARGETS[key]}${key === "calories" ? " kcal" : "g"}`);
     return;
   }
 
@@ -453,7 +449,7 @@ async function poll() {
         const userId = msg.from?.id;
 
         if (msg.photo) {
-          const user = userId ? await getRegisteredUser(userId) : null;
+          const user = userId ? await getCachedUser(userId) : null;
           if (!user) {
             await sendMessage(chatId,
               `👋 You need to register first!\n\n` +
@@ -476,6 +472,5 @@ async function poll() {
   }
 }
 
-console.log("🥗 Calorie Tracker Bot started");
-console.log(`Targets: ${TARGETS.calories} kcal | ${TARGETS.protein}g protein | ${TARGETS.carbs}g carbs | ${TARGETS.fat}g fat`);
+console.log("🥗 JarvisHealth Bot started");
 poll();
