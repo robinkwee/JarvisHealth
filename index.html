@@ -473,6 +473,31 @@
     /* ── Footer ── */
     footer { text-align: center; padding: 40px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
 
+    /* ── Settings ── */
+    .settings-section-title {
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--muted);
+      margin: 24px 0 14px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .settings-section-title:first-child { margin-top: 0; }
+    .settings-recalc {
+      font-size: 12px; color: var(--accent); text-decoration: none;
+      font-weight: 500; text-transform: none; letter-spacing: 0;
+    }
+    .settings-recalc:hover { text-decoration: underline; }
+    .settings-divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+    .settings-readonly {
+      opacity: 0.5; cursor: default !important; user-select: all;
+    }
+    .settings-logout-btn {
+      width: 100%; background: none; border: 1px solid var(--border);
+      color: var(--muted); padding: 11px; border-radius: 10px;
+      font-size: 14px; font-family: inherit; cursor: pointer;
+      transition: all 0.2s; margin-top: 4px;
+    }
+    .settings-logout-btn:hover { border-color: var(--red); color: var(--red); }
+
     /* ── Leaderboard ── */
     .lb-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
     .lb-header-left {}
@@ -854,12 +879,66 @@
     <div id="lb-list" style="display:none;"></div>
   </div>
 
-  <!-- Settings section (feat/settings) -->
+  <!-- Settings section -->
   <div id="section-settings" style="display:none;">
-    <div class="section-placeholder">
-      <div class="placeholder-icon">⚙️</div>
-      <h3>Settings</h3>
-      <p>Edit your name, email, and macro targets. Coming soon.</p>
+    <div class="goals-wrap">
+      <div class="goals-head">
+        <h2>Settings</h2>
+        <p>Update your profile and daily macro targets.</p>
+      </div>
+
+      <div class="settings-section-title">Profile</div>
+      <div class="form-group">
+        <label for="settings-name">Name</label>
+        <input type="text" id="settings-name" placeholder="Your name" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label for="settings-email">Email</label>
+        <input type="email" id="settings-email" placeholder="your@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="settings-tg-id">Telegram User ID</label>
+        <input type="text" id="settings-tg-id" class="settings-readonly" disabled>
+        <div class="form-hint">Read-only — send <code>/whoami</code> to the bot to confirm this.</div>
+      </div>
+
+      <hr class="settings-divider">
+
+      <div class="settings-section-title">
+        Daily targets
+        <a href="#goals" class="settings-recalc">Recalculate from body stats →</a>
+      </div>
+      <div class="targets-row">
+        <div class="form-group">
+          <label for="settings-kcal">Calories (kcal)</label>
+          <input type="number" id="settings-kcal" min="800" max="6000">
+        </div>
+        <div class="form-group">
+          <label for="settings-protein">Protein (g)</label>
+          <input type="number" id="settings-protein" min="0" max="500">
+        </div>
+        <div class="form-group">
+          <label for="settings-carbs">Carbs (g)</label>
+          <input type="number" id="settings-carbs" min="0" max="1000">
+        </div>
+        <div class="form-group">
+          <label for="settings-fat">Fat (g)</label>
+          <input type="number" id="settings-fat" min="0" max="500">
+        </div>
+        <div class="form-group">
+          <label for="settings-fiber">Fiber (g)</label>
+          <input type="number" id="settings-fiber" min="0" max="200">
+        </div>
+      </div>
+
+      <button class="btn-submit" id="settings-btn" onclick="doSaveSettings()">
+        <span id="settings-btn-text">Save settings</span>
+      </button>
+      <div class="form-msg" id="settings-msg"></div>
+
+      <hr class="settings-divider">
+
+      <button class="settings-logout-btn" onclick="doLogout()">Sign out</button>
     </div>
   </div>
 </section>
@@ -1513,6 +1592,55 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ── Settings ──────────────────────────────────────────────────────────────────
+function populateSettingsForm() {
+  var u = currentUser;
+  if (!u) return;
+  document.getElementById('settings-name').value = u.name || '';
+  document.getElementById('settings-email').value = u.email || '';
+  document.getElementById('settings-tg-id').value = u.user_id || '';
+  document.getElementById('settings-kcal').value = u.kcal_target || '';
+  document.getElementById('settings-protein').value = u.protein_target || '';
+  document.getElementById('settings-carbs').value = u.carbs_target || '';
+  document.getElementById('settings-fat').value = u.fat_target || '';
+  document.getElementById('settings-fiber').value = u.fiber_target || '';
+}
+
+window.doSaveSettings = async function() {
+  var name = document.getElementById('settings-name').value.trim();
+  var email = document.getElementById('settings-email').value.trim();
+  var kcal = parseInt(document.getElementById('settings-kcal').value, 10);
+  var protein = parseInt(document.getElementById('settings-protein').value, 10);
+  var carbs = parseInt(document.getElementById('settings-carbs').value, 10);
+  var fat = parseInt(document.getElementById('settings-fat').value, 10);
+  var fiber = parseInt(document.getElementById('settings-fiber').value, 10);
+
+  if (!name) { showFormMsg('settings-msg', 'error', 'Name is required.'); return; }
+  if (!email || !email.includes('@')) { showFormMsg('settings-msg', 'error', 'Enter a valid email.'); return; }
+  if (isNaN(kcal) || kcal < 800) { showFormMsg('settings-msg', 'error', 'Enter a valid calorie target (min 800).'); return; }
+
+  setLoading('settings-btn', 'settings-btn-text', true, 'Saving…');
+
+  try {
+    var updated = await sbPatch('users?user_id=eq.' + currentUser.user_id + '&select=*', {
+      name: name,
+      email: email,
+      kcal_target: kcal,
+      protein_target: isNaN(protein) ? null : protein,
+      carbs_target: isNaN(carbs) ? null : carbs,
+      fat_target: isNaN(fat) ? null : fat,
+      fiber_target: isNaN(fiber) ? null : fiber
+    });
+    if (!updated || !updated.length) throw new Error('Save failed — no rows updated.');
+    saveSession(Object.assign({}, currentUser, updated[0]));
+    setLoading('settings-btn', 'settings-btn-text', false, 'Save settings');
+    showFormMsg('settings-msg', 'success', 'Settings saved!');
+  } catch(err) {
+    showFormMsg('settings-msg', 'error', err.message || 'Failed to save settings.');
+    setLoading('settings-btn', 'settings-btn-text', false, 'Save settings');
+  }
+};
+
 // ── Friends leaderboard ───────────────────────────────────────────────────────
 async function loadFriendsData() {
   var today = todayStr();
@@ -1601,6 +1729,7 @@ function router(hash) {
   if (section === 'goals') populateGoalsForm();
 
   if (section === 'friends') loadFriendsData();
+  if (section === 'settings') populateSettingsForm();
 }
 
 window.addEventListener('hashchange', function() {
