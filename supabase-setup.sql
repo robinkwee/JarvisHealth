@@ -40,3 +40,14 @@ CREATE POLICY "Allow anon insert on users" ON users FOR INSERT WITH CHECK (true)
 CREATE POLICY "Allow anon insert on meals" ON meals FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow anon select on users" ON users FOR SELECT USING (true);
 CREATE POLICY "Allow anon select on meals" ON meals FOR SELECT USING (true);
+CREATE POLICY "Allow anon update on users" ON users FOR UPDATE USING (true) WITH CHECK (true);
+
+-- Body stats columns (added for goals form)
+-- Run these ALTER TABLEs separately if the table already exists:
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS height_cm DECIMAL(5,1);
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS weight_kg DECIMAL(5,2);
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS age INT;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS sex TEXT;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS activity_level TEXT;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS goal TEXT;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS goals_set BOOLEAN DEFAULT FALSE;

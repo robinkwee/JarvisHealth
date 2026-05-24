@@ -1216,7 +1216,7 @@ window.doSaveGoals = async function() {
   setLoading('goals-btn', 'goals-btn-text', true, 'Saving…');
 
   try {
-    var updated = await sbPatch('users?user_id=eq.' + currentUser.user_id, {
+    var updated = await sbPatch('users?user_id=eq.' + currentUser.user_id + '&select=*', {
       height_cm: Math.round(v.heightCm * 10) / 10,
       weight_kg: Math.round(v.weightKg * 100) / 100,
       age: v.age,
@@ -1230,7 +1230,10 @@ window.doSaveGoals = async function() {
       fiber_target: t.fiber,
       goals_set: true
     });
-    var patch = (updated && updated[0]) ? updated[0] : {};
+    if (!updated || updated.length === 0) {
+      throw new Error('Save failed — Supabase returned 0 rows. Check that the UPDATE RLS policy exists on the users table.');
+    }
+    var patch = updated[0];
     saveSession(Object.assign({}, currentUser, patch, {
       kcal_target: t.kcal, protein_target: t.protein,
       carbs_target: t.carbs, fat_target: t.fat, fiber_target: t.fiber,
