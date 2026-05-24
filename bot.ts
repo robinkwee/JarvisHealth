@@ -171,8 +171,8 @@ async function getDailyTotals(userId: number, date: string) {
     `${SUPABASE_URL}/rest/v1/meals?user_id=eq.${userId}&date=eq.${date}&select=calories,protein_g,carbs_g,fat_g,fiber_g`,
     { headers: SB_HEADERS }
   );
-  const rows = await res.json() as any[];
-  if (!rows.length) return null;
+  const rows = await res.json();
+  if (!Array.isArray(rows) || !rows.length) return null;
   return {
     calories: rows.reduce((s: number, r: any) => s + (r.calories || 0), 0),
     protein: rows.reduce((s: number, r: any) => s + (r.protein_g || 0), 0),
@@ -195,11 +195,11 @@ async function formatDailyTotalForUser(userId: number, user: any): Promise<strin
   if (!t) return "No meals logged today yet.";
 
   const targets = {
-    calories: user.kcal_target,
-    protein: user.protein_target,
-    carbs: user.carbs_target,
-    fat: user.fat_target,
-    fiber: user.fiber_target,
+    calories: user.kcal_target ?? 2000,
+    protein: user.protein_target ?? 150,
+    carbs: user.carbs_target ?? 200,
+    fat: user.fat_target ?? 65,
+    fiber: user.fiber_target ?? 25,
   };
   const calPct = Math.round((t.calories / targets.calories) * 100);
   return `*Today's Totals* (${t.meals} meal${t.meals !== 1 ? "s" : ""})\n\n` +
@@ -300,7 +300,7 @@ async function handleCallbackQuery(callbackQueryId: string, chatId: number, data
       return;
     }
     markPhotoLogged(estimate.photoMsgId);
-    logToSupabase(estimate.userId, estimate, estimate.photoMsgId).catch(console.error);
+    await logToSupabase(estimate.userId, estimate, estimate.photoMsgId);
     pending.delete(msgId);
     const user = await getCachedUser(estimate.userId);
     const totals = await formatDailyTotalForUser(estimate.userId, user);
