@@ -473,6 +473,38 @@
     /* ── Footer ── */
     footer { text-align: center; padding: 40px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
 
+    /* ── Leaderboard ── */
+    .lb-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .lb-header-left {}
+    .lb-title { font-size: 18px; font-weight: 700; }
+    .lb-subtitle { font-size: 13px; color: var(--muted); margin-top: 3px; }
+    .lb-refresh-btn {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+      padding: 7px 14px; border-radius: 8px; font-size: 13px; font-family: inherit;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .lb-refresh-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+    .lb-item {
+      display: flex; align-items: center; gap: 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px 20px; margin-bottom: 10px;
+      transition: border-color 0.2s;
+    }
+    .lb-item.lb-you { border-color: var(--accent); background: rgba(108,99,255,0.06); }
+    .lb-rank { font-size: 22px; width: 36px; text-align: center; flex-shrink: 0; }
+    .lb-info { flex: 1; min-width: 0; }
+    .lb-name { font-size: 15px; font-weight: 600; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; }
+    .lb-you-tag {
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      background: var(--accent); color: white; padding: 2px 6px; border-radius: 4px;
+    }
+    .lb-cals { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .lb-bar-wrap { height: 5px; background: var(--surface2); border-radius: 100px; overflow: hidden; }
+    .lb-bar { height: 100%; border-radius: 100px; transition: width 0.6s ease; }
+    .lb-pct { font-size: 15px; font-weight: 700; min-width: 44px; text-align: right; flex-shrink: 0; }
+    .lb-empty { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 14px; }
+    .lb-loading { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 14px; }
+
     /* ── Responsive ── */
     @media (max-width: 640px) {
       nav { padding: 16px 20px; }
@@ -809,13 +841,17 @@
     </div>
   </div>
 
-  <!-- Friends section (feat/friends-leaderboard) -->
+  <!-- Friends section -->
   <div id="section-friends" style="display:none;">
-    <div class="section-placeholder">
-      <div class="placeholder-icon">🏆</div>
-      <h3>Friends leaderboard</h3>
-      <p>See how everyone in the group is tracking today. Who's hitting their macros? Coming soon.</p>
+    <div class="lb-header">
+      <div class="lb-header-left">
+        <div class="lb-title">🏆 Today's Leaderboard</div>
+        <div class="lb-subtitle" id="lb-date"></div>
+      </div>
+      <button class="lb-refresh-btn" onclick="loadFriendsData()">↻ Refresh</button>
     </div>
+    <div id="lb-loading" class="lb-loading">Loading...</div>
+    <div id="lb-list" style="display:none;"></div>
   </div>
 
   <!-- Settings section (feat/settings) -->
@@ -1477,6 +1513,69 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ── Friends leaderboard ───────────────────────────────────────────────────────
+async function loadFriendsData() {
+  var today = todayStr();
+  document.getElementById('lb-date').textContent = formatDate(new Date());
+  document.getElementById('lb-loading').style.display = 'block';
+  document.getElementById('lb-list').style.display = 'none';
+  try {
+    var results = await Promise.all([
+      sbGet('meals?date=eq.' + today + '&select=user_id,calories,protein_g,carbs_g,fat_g'),
+      sbGet('users?select=user_id,name,kcal_target&order=name.asc')
+    ]);
+    renderLeaderboard(results[0], results[1]);
+  } catch(e) {
+    document.getElementById('lb-loading').textContent = 'Could not load leaderboard.';
+  }
+}
+
+function renderLeaderboard(meals, users) {
+  var byUser = {};
+  meals.forEach(function(m) {
+    if (!byUser[m.user_id]) byUser[m.user_id] = 0;
+    byUser[m.user_id] += m.calories || 0;
+  });
+
+  var rows = users.map(function(u) {
+    return {
+      user_id: u.user_id,
+      name: u.name || 'Anonymous',
+      calories: byUser[u.user_id] || 0,
+      target: u.kcal_target || 2000
+    };
+  }).sort(function(a, b) { return b.calories - a.calories; });
+
+  if (!rows.length) {
+    document.getElementById('lb-loading').style.display = 'none';
+    document.getElementById('lb-list').innerHTML = '<div class="lb-empty">No friends registered yet.</div>';
+    document.getElementById('lb-list').style.display = 'block';
+    return;
+  }
+
+  var medals = ['🥇', '🥈', '🥉'];
+  var html = rows.map(function(row, i) {
+    var pct = Math.min(100, Math.round((row.calories / row.target) * 100));
+    var isMe = currentUser && row.user_id === currentUser.user_id;
+    var rank = i < 3 ? medals[i] : (i + 1);
+    var barColor = pct >= 90 ? 'var(--green)' : pct >= 50 ? 'var(--accent)' : 'var(--muted)';
+    var pctColor = pct >= 90 ? 'var(--green)' : pct >= 50 ? 'var(--text)' : 'var(--muted)';
+    return '<div class="lb-item' + (isMe ? ' lb-you' : '') + '">' +
+      '<div class="lb-rank">' + rank + '</div>' +
+      '<div class="lb-info">' +
+        '<div class="lb-name">' + escHtml(row.name) + (isMe ? ' <span class="lb-you-tag">you</span>' : '') + '</div>' +
+        '<div class="lb-cals">' + Math.round(row.calories).toLocaleString() + ' / ' + row.target.toLocaleString() + ' kcal</div>' +
+        '<div class="lb-bar-wrap"><div class="lb-bar" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
+      '</div>' +
+      '<div class="lb-pct" style="color:' + pctColor + '">' + pct + '%</div>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('lb-loading').style.display = 'none';
+  document.getElementById('lb-list').innerHTML = html;
+  document.getElementById('lb-list').style.display = 'block';
+}
+
 // ── Router ───────────────────────────────────────────────────────────────────
 function router(hash) {
   var section = (hash || '').replace('#', '') || 'today';
@@ -1500,6 +1599,8 @@ function router(hash) {
 
   // Populate goals form whenever the section becomes active
   if (section === 'goals') populateGoalsForm();
+
+  if (section === 'friends') loadFriendsData();
 }
 
 window.addEventListener('hashchange', function() {
