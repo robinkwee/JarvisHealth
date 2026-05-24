@@ -530,12 +530,103 @@
     .lb-empty { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 14px; }
     .lb-loading { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 14px; }
 
+    /* ── Streak card ── */
+    .streak-card {
+      background: rgba(245,158,11,0.06);
+      border: 1px solid rgba(245,158,11,0.28);
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .streak-card-top { display: flex; align-items: center; gap: 20px; }
+    .streak-flame { display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; }
+    .streak-num {
+      font-size: 56px; font-weight: 800; line-height: 1;
+      color: var(--amber);
+      filter: drop-shadow(0 0 12px rgba(245,158,11,0.45));
+    }
+    .streak-label { font-size: 11px; color: var(--amber); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .streak-right { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+    .streak-meta-row { display: flex; gap: 20px; }
+    .streak-meta-item { display: flex; flex-direction: column; gap: 2px; }
+    .streak-meta-val { font-size: 18px; font-weight: 700; color: var(--text); }
+    .streak-meta-key { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .xp-level-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .xp-level-label { font-size: 12px; font-weight: 600; color: var(--accent); }
+    .xp-count { font-size: 11px; color: var(--muted); }
+    .xp-bar-outer { height: 6px; background: var(--surface2); border-radius: 100px; overflow: hidden; }
+    .xp-bar-inner {
+      height: 100%; border-radius: 100px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.8s ease;
+    }
+
+    /* ── Badges ── */
+    .badge-row { display: flex; gap: 7px; flex-wrap: wrap; }
+    .badge-chip {
+      display: flex; align-items: center; gap: 4px;
+      padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 500; border: 1px solid;
+      transition: transform 0.2s;
+    }
+    .badge-chip.earned { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.1); color: var(--amber); }
+    .badge-chip.earned:hover { transform: scale(1.06); }
+    .badge-chip.locked { border-color: var(--border); background: transparent; color: var(--muted); opacity: 0.38; }
+    @keyframes badge-pop { 0% { transform: scale(0.7); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
+    .badge-chip.just-earned { animation: badge-pop 0.4s ease forwards; }
+
+    /* ── Comeback card ── */
+    .streak-lost-card {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.35);
+      border-radius: 16px; padding: 18px 22px; margin-bottom: 20px;
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .streak-lost-icon { font-size: 28px; line-height: 1; }
+    .streak-lost-title { font-size: 15px; font-weight: 700; color: var(--amber); margin-bottom: 4px; }
+    .streak-lost-msg { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .streak-lost-boost {
+      display: inline-block; margin-top: 8px;
+      font-size: 12px; font-weight: 600; color: var(--amber);
+      background: rgba(245,158,11,0.12); padding: 3px 10px; border-radius: 100px;
+    }
+
+    /* ── Milestone toast ── */
+    .milestone-toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface); border: 1px solid rgba(245,158,11,0.4);
+      border-radius: 14px; padding: 14px 22px;
+      font-size: 15px; font-weight: 600; color: var(--text);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 9999;
+      opacity: 0; pointer-events: none;
+      transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .milestone-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Leaderboard tabs ── */
+    .lb-tabs {
+      display: flex; gap: 5px; background: var(--surface2);
+      padding: 4px; border-radius: 10px; width: fit-content; margin-bottom: 20px;
+    }
+    .lb-tab {
+      padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 500;
+      color: var(--muted); background: none; border: none; font-family: inherit; cursor: pointer; transition: all 0.2s;
+    }
+    .lb-tab:hover { color: var(--text); }
+    .lb-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+
     /* ── Responsive ── */
     @media (max-width: 640px) {
       nav { padding: 16px 20px; }
       section { padding: 60px 20px; }
       .hero { padding-top: 60px; }
       .targets-row { grid-template-columns: 1fr; }
+      .streak-card-top { gap: 12px; }
+      .streak-num { font-size: 44px; }
+      .streak-meta-row { gap: 12px; }
     }
   </style>
 </head>
@@ -701,8 +792,14 @@
     <a href="#settings" class="dash-nav-link" data-section="settings">Settings</a>
   </nav>
 
+  <!-- Milestone toast (fixed overlay) -->
+  <div id="milestone-toast" class="milestone-toast"></div>
+
   <!-- Today section -->
   <div id="section-today">
+    <!-- Streak / gamification card injected here by renderStreakCard() -->
+    <div id="streak-card-wrap"></div>
+
     <div class="chart-section">
       <div class="chart-header">
         <div class="chart-title">Calories this week</div>
@@ -870,10 +967,15 @@
   <div id="section-friends" style="display:none;">
     <div class="lb-header">
       <div class="lb-header-left">
-        <div class="lb-title">🏆 Today's Leaderboard</div>
+        <div class="lb-title">🏆 Leaderboard</div>
         <div class="lb-subtitle" id="lb-date"></div>
       </div>
-      <button class="lb-refresh-btn" onclick="loadFriendsData()">↻ Refresh</button>
+      <button class="lb-refresh-btn" onclick="refreshLeaderboard()">↻ Refresh</button>
+    </div>
+    <div class="lb-tabs">
+      <button class="lb-tab active" data-tab="today" onclick="switchLbTab('today')">Today</button>
+      <button class="lb-tab" data-tab="streak" onclick="switchLbTab('streak')">🔥 Streak</button>
+      <button class="lb-tab" data-tab="alltime" onclick="switchLbTab('alltime')">All-time</button>
     </div>
     <div id="lb-loading" class="lb-loading">Loading...</div>
     <div id="lb-list" style="display:none;"></div>
@@ -1122,15 +1224,18 @@ async function loadDashboardData() {
   var today = todayStr();
   var weekStart = dateMinusDays(6);
   try {
-    var [todayMeals, weekMeals] = await Promise.all([
+    var [todayMeals, weekMeals, allMeals] = await Promise.all([
       sbGet('meals?user_id=eq.' + u.user_id + '&date=eq.' + today + '&order=time.asc'),
-      sbGet('meals?user_id=eq.' + u.user_id + '&date=gte.' + weekStart + '&date=lte.' + today + '&select=date,calories')
+      sbGet('meals?user_id=eq.' + u.user_id + '&date=gte.' + weekStart + '&date=lte.' + today + '&select=date,calories'),
+      sbGet('meals?user_id=eq.' + u.user_id + '&select=date,protein_g&order=date.desc')
     ]);
     renderDashboard(todayMeals, u);
     renderChart(weekMeals, u);
+    renderStreakCard(allMeals);
   } catch(err) {
     renderDashboard([], u);
     renderChart([], u);
+    renderStreakCard([]);
   }
 }
 
@@ -1641,10 +1746,173 @@ window.doSaveSettings = async function() {
   }
 };
 
+// ── Gamification ──────────────────────────────────────────────────────────────
+var XP_LEVELS = [
+  { min: 0,    label: 'Beginner' },
+  { min: 100,  label: 'Consistent' },
+  { min: 300,  label: 'Dedicated' },
+  { min: 600,  label: 'Elite' },
+  { min: 1000, label: 'Legend' },
+  { min: 1500, label: 'Legend' }
+];
+
+var BADGE_DEFS = [
+  { id: 'first_log',     icon: '🌟', label: 'First Log',    check: function(s) { return s.totalMeals >= 1; } },
+  { id: 'week_warrior',  icon: '🔥', label: 'Week Warrior', check: function(s) { return s.longest >= 7; } },
+  { id: 'month_legend',  icon: '🏆', label: 'Month Legend', check: function(s) { return s.longest >= 30; } },
+  { id: 'century',       icon: '⚡', label: 'Century',      check: function(s) { return s.totalDays >= 100; } },
+  { id: 'speed_logger',  icon: '⏱️', label: 'Speed Logger', check: function(s) { return s.maxPerDay >= 3; } },
+  { id: 'protein_king',  icon: '💪', label: 'Protein King', check: function(s) { return s.proteinStreak >= 5; } }
+];
+
+function computeStreakStats(meals) {
+  if (!meals || !meals.length) return { current: 0, longest: 0, totalDays: 0, totalMeals: 0, lastLogDate: null, maxPerDay: 0, proteinStreak: 0, consistencyPct: 0 };
+
+  var today = todayStr();
+  var yesterday = dateMinusDays(1);
+  var proteinTarget = (currentUser && currentUser.protein_target) || 140;
+
+  var mealsByDay = {};
+  meals.forEach(function(m) {
+    if (!mealsByDay[m.date]) mealsByDay[m.date] = [];
+    mealsByDay[m.date].push(m);
+  });
+
+  var maxPerDay = 0;
+  Object.keys(mealsByDay).forEach(function(d) { if (mealsByDay[d].length > maxPerDay) maxPerDay = mealsByDay[d].length; });
+
+  var uniqueDates = Object.keys(mealsByDay).sort().reverse();
+  var lastLogDate = uniqueDates[0];
+
+  // Current streak
+  var current = 0;
+  if (lastLogDate === today || lastLogDate === yesterday) {
+    current = 1;
+    for (var i = 1; i < uniqueDates.length; i++) {
+      var diff = (new Date(uniqueDates[i-1]+'T00:00:00') - new Date(uniqueDates[i]+'T00:00:00')) / 86400000;
+      if (diff === 1) current++; else break;
+    }
+  }
+
+  // Longest streak
+  var longest = uniqueDates.length ? 1 : 0;
+  var run = 1;
+  for (var i = 1; i < uniqueDates.length; i++) {
+    var diff = (new Date(uniqueDates[i-1]+'T00:00:00') - new Date(uniqueDates[i]+'T00:00:00')) / 86400000;
+    if (diff === 1) { run++; if (run > longest) longest = run; } else { run = 1; }
+  }
+
+  // Protein streak (consecutive days at ≥90% of target)
+  var proteinStreak = 0, runP = 0;
+  for (var i = 0; i < uniqueDates.length; i++) {
+    var dayProt = mealsByDay[uniqueDates[i]].reduce(function(acc, m) { return acc + (parseFloat(m.protein_g) || 0); }, 0);
+    if (dayProt >= proteinTarget * 0.9) { runP++; if (runP > proteinStreak) proteinStreak = runP; } else { runP = 0; }
+  }
+
+  // Consistency %
+  var firstDate = uniqueDates[uniqueDates.length - 1];
+  var daysSinceFirst = Math.max(1, Math.round((new Date(today+'T00:00:00') - new Date(firstDate+'T00:00:00')) / 86400000) + 1);
+  var consistencyPct = Math.round((uniqueDates.length / daysSinceFirst) * 100);
+
+  return { current: current, longest: longest, totalDays: uniqueDates.length, totalMeals: meals.length, lastLogDate: lastLogDate, maxPerDay: maxPerDay, proteinStreak: proteinStreak, consistencyPct: consistencyPct };
+}
+
+function computeXP(totalMeals, currentStreak) { return totalMeals * 25 + currentStreak * 10; }
+
+function getLevelInfo(xp) {
+  for (var i = 0; i < XP_LEVELS.length - 1; i++) {
+    if (xp < XP_LEVELS[i + 1].min) {
+      var pct = Math.round(((xp - XP_LEVELS[i].min) / (XP_LEVELS[i + 1].min - XP_LEVELS[i].min)) * 100);
+      return { num: i + 1, label: XP_LEVELS[i].label, pct: Math.min(100, pct), nextMin: XP_LEVELS[i + 1].min };
+    }
+  }
+  return { num: 5, label: 'Legend', pct: 100, nextMin: 1500 };
+}
+
+var _shownMilestones = new Set();
+
+function showMilestoneToast(msg) {
+  if (_shownMilestones.has(msg)) return;
+  _shownMilestones.add(msg);
+  var el = document.getElementById('milestone-toast');
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(function() { el.classList.remove('visible'); }, 3500);
+}
+
+function renderStreakCard(allMeals) {
+  var wrap = document.getElementById('streak-card-wrap');
+  if (!wrap) return;
+
+  var s = computeStreakStats(allMeals);
+  var today = todayStr();
+  var yesterday = dateMinusDays(1);
+  var streakBroken = s.totalMeals > 0 && s.current === 0 && s.lastLogDate !== today && s.lastLogDate !== yesterday;
+
+  if (streakBroken) {
+    wrap.innerHTML = '<div class="streak-lost-card">'
+      + '<div class="streak-lost-icon">🔥</div>'
+      + '<div class="streak-lost-body">'
+      + '<div class="streak-lost-title">Your streak ended</div>'
+      + '<div class="streak-lost-msg">Last logged ' + s.lastLogDate + '. Log something today to start fresh!</div>'
+      + '<span class="streak-lost-boost">⚡ 2× XP boost — restart your streak today</span>'
+      + '</div></div>';
+    return;
+  }
+
+  var xp = computeXP(s.totalMeals, s.current);
+  var lvl = getLevelInfo(xp);
+
+  var badgeHtml = BADGE_DEFS.map(function(b) {
+    var earned = b.check(s);
+    return '<span class="badge-chip ' + (earned ? 'earned' : 'locked') + '" title="' + b.label + '">' + b.icon + ' ' + b.label + '</span>';
+  }).join('');
+
+  wrap.innerHTML = '<div class="streak-card">'
+    + '<div class="streak-card-top">'
+    + '<div class="streak-flame"><div class="streak-num">' + s.current + '</div><div class="streak-label">day streak</div></div>'
+    + '<div class="streak-right">'
+    + '<div class="streak-meta-row">'
+    + '<div class="streak-meta-item"><div class="streak-meta-val">' + s.totalDays + '</div><div class="streak-meta-key">Total Days</div></div>'
+    + '<div class="streak-meta-item"><div class="streak-meta-val">' + s.longest + '</div><div class="streak-meta-key">Best Streak</div></div>'
+    + '<div class="streak-meta-item"><div class="streak-meta-val">' + s.consistencyPct + '%</div><div class="streak-meta-key">Consistency</div></div>'
+    + '</div>'
+    + '<div class="xp-level-row"><span class="xp-level-label">Lv.' + lvl.num + ' ' + lvl.label + '</span><span class="xp-count">' + xp + ' / ' + lvl.nextMin + ' XP</span></div>'
+    + '<div class="xp-bar-outer"><div class="xp-bar-inner" style="width:' + lvl.pct + '%"></div></div>'
+    + '</div></div>'
+    + '<div class="badge-row">' + badgeHtml + '</div>'
+    + '</div>';
+
+  if (s.current === 7)   showMilestoneToast('🔥 7-day streak! You\'re on fire!');
+  if (s.current === 30)  showMilestoneToast('🏆 30-day streak! You\'re a legend!');
+  if (s.current === 100) showMilestoneToast('⚡ 100-day streak! Incredible!');
+}
+
 // ── Friends leaderboard ───────────────────────────────────────────────────────
+var _lbActiveTab = 'today';
+var _allMealsCache = null;
+var _allUsersCache = null;
+
+function switchLbTab(tab) {
+  _lbActiveTab = tab;
+  document.querySelectorAll('.lb-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+  if (tab === 'today') loadFriendsData();
+  else loadTabLeaderboard(tab);
+}
+
+function refreshLeaderboard() {
+  _allMealsCache = null;
+  _allUsersCache = null;
+  if (_lbActiveTab === 'today') loadFriendsData();
+  else loadTabLeaderboard(_lbActiveTab);
+}
+
 async function loadFriendsData() {
   var today = todayStr();
   document.getElementById('lb-date').textContent = formatDate(new Date());
+  document.getElementById('lb-loading').textContent = 'Loading...';
   document.getElementById('lb-loading').style.display = 'block';
   document.getElementById('lb-list').style.display = 'none';
   try {
@@ -1652,26 +1920,34 @@ async function loadFriendsData() {
       sbGet('meals?date=eq.' + today + '&select=user_id,calories,protein_g,carbs_g,fat_g'),
       sbGet('users?select=user_id,name,kcal_target&order=name.asc')
     ]);
-    renderLeaderboard(results[0], results[1]);
+    _allUsersCache = results[1];
+    renderTodayLeaderboard(results[0], results[1]);
   } catch(e) {
     document.getElementById('lb-loading').textContent = 'Could not load leaderboard.';
   }
 }
 
-function renderLeaderboard(meals, users) {
+async function loadTabLeaderboard(tab) {
+  document.getElementById('lb-date').textContent = formatDate(new Date());
+  document.getElementById('lb-loading').textContent = 'Loading...';
+  document.getElementById('lb-loading').style.display = 'block';
+  document.getElementById('lb-list').style.display = 'none';
+  try {
+    if (!_allUsersCache) _allUsersCache = await sbGet('users?select=user_id,name,kcal_target,protein_target&order=name.asc');
+    if (!_allMealsCache) _allMealsCache = await sbGet('meals?select=user_id,date,protein_g&order=date.desc');
+    if (tab === 'streak')  renderStreakLeaderboard(_allMealsCache, _allUsersCache);
+    if (tab === 'alltime') renderAlltimeLeaderboard(_allMealsCache, _allUsersCache);
+  } catch(e) {
+    document.getElementById('lb-loading').textContent = 'Could not load leaderboard.';
+  }
+}
+
+function renderTodayLeaderboard(meals, users) {
   var byUser = {};
-  meals.forEach(function(m) {
-    if (!byUser[m.user_id]) byUser[m.user_id] = 0;
-    byUser[m.user_id] += m.calories || 0;
-  });
+  meals.forEach(function(m) { if (!byUser[m.user_id]) byUser[m.user_id] = 0; byUser[m.user_id] += m.calories || 0; });
 
   var rows = users.map(function(u) {
-    return {
-      user_id: u.user_id,
-      name: u.name || 'Anonymous',
-      calories: byUser[u.user_id] || 0,
-      target: u.kcal_target || 2000
-    };
+    return { user_id: u.user_id, name: u.name || 'Anonymous', calories: byUser[u.user_id] || 0, target: u.kcal_target || 2000 };
   }).sort(function(a, b) { return b.calories - a.calories; });
 
   if (!rows.length) {
@@ -1688,19 +1964,80 @@ function renderLeaderboard(meals, users) {
     var rank = i < 3 ? medals[i] : (i + 1);
     var barColor = pct >= 90 ? 'var(--green)' : pct >= 50 ? 'var(--accent)' : 'var(--muted)';
     var pctColor = pct >= 90 ? 'var(--green)' : pct >= 50 ? 'var(--text)' : 'var(--muted)';
-    return '<div class="lb-item' + (isMe ? ' lb-you' : '') + '">' +
-      '<div class="lb-rank">' + rank + '</div>' +
-      '<div class="lb-info">' +
-        '<div class="lb-name">' + escHtml(row.name) + (isMe ? ' <span class="lb-you-tag">you</span>' : '') + '</div>' +
-        '<div class="lb-cals">' + Math.round(row.calories).toLocaleString() + ' / ' + row.target.toLocaleString() + ' kcal</div>' +
-        '<div class="lb-bar-wrap"><div class="lb-bar" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
-      '</div>' +
-      '<div class="lb-pct" style="color:' + pctColor + '">' + pct + '%</div>' +
-    '</div>';
+    return '<div class="lb-item' + (isMe ? ' lb-you' : '') + '">'
+      + '<div class="lb-rank">' + rank + '</div>'
+      + '<div class="lb-info">'
+      + '<div class="lb-name">' + escHtml(row.name) + (isMe ? ' <span class="lb-you-tag">you</span>' : '') + '</div>'
+      + '<div class="lb-cals">' + Math.round(row.calories).toLocaleString() + ' / ' + row.target.toLocaleString() + ' kcal</div>'
+      + '<div class="lb-bar-wrap"><div class="lb-bar" style="width:' + pct + '%;background:' + barColor + '"></div></div>'
+      + '</div>'
+      + '<div class="lb-pct" style="color:' + pctColor + '">' + pct + '%</div>'
+      + '</div>';
   }).join('');
 
   document.getElementById('lb-loading').style.display = 'none';
   document.getElementById('lb-list').innerHTML = html;
+  document.getElementById('lb-list').style.display = 'block';
+}
+
+function renderStreakLeaderboard(allMeals, users) {
+  var mealsByUser = {};
+  allMeals.forEach(function(m) { if (!mealsByUser[m.user_id]) mealsByUser[m.user_id] = []; mealsByUser[m.user_id].push(m); });
+
+  var rows = users.map(function(u) {
+    var s = computeStreakStats(mealsByUser[u.user_id] || []);
+    return { user_id: u.user_id, name: u.name || 'Anonymous', current: s.current, longest: s.longest, totalDays: s.totalDays };
+  }).sort(function(a, b) { return b.current !== a.current ? b.current - a.current : b.longest - a.longest; });
+
+  var medals = ['🥇', '🥈', '🥉'];
+  var html = rows.map(function(row, i) {
+    var isMe = currentUser && row.user_id === currentUser.user_id;
+    var rank = i < 3 ? medals[i] : (i + 1);
+    var streakStr = row.current > 0 ? ('🔥 ' + row.current + 'd') : (row.longest > 0 ? 'Best: ' + row.longest + 'd' : '—');
+    var col = row.current > 0 ? 'var(--amber)' : 'var(--muted)';
+    return '<div class="lb-item' + (isMe ? ' lb-you' : '') + '">'
+      + '<div class="lb-rank">' + rank + '</div>'
+      + '<div class="lb-info">'
+      + '<div class="lb-name">' + escHtml(row.name) + (isMe ? ' <span class="lb-you-tag">you</span>' : '') + '</div>'
+      + '<div class="lb-cals">' + row.totalDays + ' total days logged</div>'
+      + '</div>'
+      + '<div class="lb-pct" style="color:' + col + '">' + streakStr + '</div>'
+      + '</div>';
+  }).join('');
+
+  document.getElementById('lb-loading').style.display = 'none';
+  document.getElementById('lb-list').innerHTML = html || '<div class="lb-empty">No data yet.</div>';
+  document.getElementById('lb-list').style.display = 'block';
+}
+
+function renderAlltimeLeaderboard(allMeals, users) {
+  var daysByUser = {}, countByUser = {};
+  allMeals.forEach(function(m) {
+    if (!daysByUser[m.user_id]) daysByUser[m.user_id] = new Set();
+    daysByUser[m.user_id].add(m.date);
+    countByUser[m.user_id] = (countByUser[m.user_id] || 0) + 1;
+  });
+
+  var rows = users.map(function(u) {
+    return { user_id: u.user_id, name: u.name || 'Anonymous', totalDays: daysByUser[u.user_id] ? daysByUser[u.user_id].size : 0, totalMeals: countByUser[u.user_id] || 0 };
+  }).sort(function(a, b) { return b.totalDays !== a.totalDays ? b.totalDays - a.totalDays : b.totalMeals - a.totalMeals; });
+
+  var medals = ['🥇', '🥈', '🥉'];
+  var html = rows.map(function(row, i) {
+    var isMe = currentUser && row.user_id === currentUser.user_id;
+    var rank = i < 3 ? medals[i] : (i + 1);
+    return '<div class="lb-item' + (isMe ? ' lb-you' : '') + '">'
+      + '<div class="lb-rank">' + rank + '</div>'
+      + '<div class="lb-info">'
+      + '<div class="lb-name">' + escHtml(row.name) + (isMe ? ' <span class="lb-you-tag">you</span>' : '') + '</div>'
+      + '<div class="lb-cals">' + row.totalMeals + ' meals logged</div>'
+      + '</div>'
+      + '<div class="lb-pct" style="color:var(--text)">' + row.totalDays + ' days</div>'
+      + '</div>';
+  }).join('');
+
+  document.getElementById('lb-loading').style.display = 'none';
+  document.getElementById('lb-list').innerHTML = html || '<div class="lb-empty">No data yet.</div>';
   document.getElementById('lb-list').style.display = 'block';
 }
 
@@ -1728,7 +2065,14 @@ function router(hash) {
   // Populate goals form whenever the section becomes active
   if (section === 'goals') populateGoalsForm();
 
-  if (section === 'friends') loadFriendsData();
+  if (section === 'friends') {
+    // Reset tab UI to match current active tab, then load
+    document.querySelectorAll('.lb-tab').forEach(function(t) {
+      t.classList.toggle('active', t.dataset.tab === _lbActiveTab);
+    });
+    if (_lbActiveTab === 'today') loadFriendsData();
+    else loadTabLeaderboard(_lbActiveTab);
+  }
   if (section === 'settings') populateSettingsForm();
 }
 
