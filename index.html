@@ -392,6 +392,50 @@
     .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     .chart-wrap { position: relative; height: 200px; }
 
+    /* ── Goals form ── */
+    .goals-wrap { max-width: 560px; }
+    .goals-head { margin-bottom: 32px; }
+    .goals-head h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .goals-head p { font-size: 15px; color: var(--muted); line-height: 1.6; }
+    .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
+    .radio-option {
+      flex: 1; display: flex; align-items: center; gap: 10px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 16px;
+      cursor: pointer; transition: border-color 0.2s; font-size: 14px;
+    }
+    .radio-option input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; }
+    .radio-option:has(input:checked) { border-color: var(--accent); background: rgba(108,99,255,0.08); }
+    .goal-radio-group { display: flex; flex-direction: column; gap: 8px; }
+    .goal-radio-option {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px;
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    .goal-radio-option input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; }
+    .goal-radio-option:has(input:checked) { border-color: var(--accent); background: rgba(108,99,255,0.08); }
+    .goal-radio-option strong { display: block; font-size: 14px; font-weight: 600; }
+    .goal-radio-option small { font-size: 12px; color: var(--muted); }
+    .unit-toggle { display: inline-flex; gap: 3px; background: var(--surface2); border-radius: 6px; padding: 3px; margin-left: 10px; vertical-align: middle; }
+    .unit-btn { font-size: 11px; font-weight: 600; padding: 3px 8px; border: none; border-radius: 4px; background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; font-family: inherit; }
+    .unit-btn.active { background: var(--accent); color: white; }
+    .goals-select {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); padding: 11px 14px; border-radius: 10px;
+      font-size: 14px; font-family: inherit; outline: none; cursor: pointer;
+    }
+    .goals-select:focus { border-color: var(--accent); }
+    .tdee-preview {
+      background: rgba(108,99,255,0.06); border: 1px solid rgba(108,99,255,0.2);
+      border-radius: 14px; padding: 20px; margin-bottom: 20px;
+    }
+    .tdee-preview-title { font-size: 12px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+    .tdee-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .tdee-item { text-align: center; }
+    .tdee-item span { display: block; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+    .tdee-item small { font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 600; }
+
     /* ── Dashboard nav ── */
     .dash-nav {
       display: flex;
@@ -654,12 +698,114 @@
     </div>
   </div>
 
-  <!-- Goals section (feat/goals-form) -->
+  <!-- Goals section -->
   <div id="section-goals" style="display:none;">
-    <div class="section-placeholder">
-      <div class="placeholder-icon">🎯</div>
-      <h3>Set your goals</h3>
-      <p>Tell us your body stats and we'll calculate your personalized calorie and macro targets. Coming soon.</p>
+    <div class="goals-wrap">
+      <div class="goals-head">
+        <h2>Set your goals</h2>
+        <p>Tell us about yourself — we'll calculate your personalized calorie and macro targets using the Mifflin-St Jeor formula.</p>
+      </div>
+
+      <div class="form-group">
+        <label>Biological sex</label>
+        <div class="radio-group">
+          <label class="radio-option">
+            <input type="radio" name="goals-sex" value="male" id="goals-sex-male" onchange="updateGoalsPreview()">
+            <span>Male</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="goals-sex" value="female" id="goals-sex-female" onchange="updateGoalsPreview()">
+            <span>Female</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Age (years)</label>
+        <input type="number" id="goals-age" placeholder="25" min="10" max="100" oninput="updateGoalsPreview()">
+      </div>
+
+      <div class="form-group">
+        <label>
+          Height
+          <span class="unit-toggle">
+            <button class="unit-btn active" id="height-cm-btn" onclick="setHeightUnit('cm')">cm</button>
+            <button class="unit-btn" id="height-ftin-btn" onclick="setHeightUnit('ftin')">ft / in</button>
+          </span>
+        </label>
+        <div id="height-cm-input">
+          <input type="number" id="goals-height-cm" placeholder="175" min="100" max="250" oninput="updateGoalsPreview()">
+        </div>
+        <div id="height-ftin-input" style="display:none;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <input type="number" id="goals-height-ft" placeholder="5 ft" min="3" max="8" oninput="updateGoalsPreview()">
+            <input type="number" id="goals-height-in" placeholder="9 in" min="0" max="11" oninput="updateGoalsPreview()">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>
+          Current weight
+          <span class="unit-toggle">
+            <button class="unit-btn active" id="weight-kg-btn" onclick="setWeightUnit('kg')">kg</button>
+            <button class="unit-btn" id="weight-lbs-btn" onclick="setWeightUnit('lbs')">lbs</button>
+          </span>
+        </label>
+        <div id="weight-kg-input">
+          <input type="number" id="goals-weight-kg" placeholder="70" min="30" max="300" step="0.1" oninput="updateGoalsPreview()">
+        </div>
+        <div id="weight-lbs-input" style="display:none;">
+          <input type="number" id="goals-weight-lbs" placeholder="154" min="66" max="660" step="0.1" oninput="updateGoalsPreview()">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Activity level</label>
+        <select id="goals-activity" class="goals-select" onchange="updateGoalsPreview()">
+          <option value="">Select activity level…</option>
+          <option value="sedentary">Sedentary — desk job, little or no exercise</option>
+          <option value="lightly_active">Lightly active — light exercise 1–3 days/week</option>
+          <option value="moderately_active">Moderately active — moderate exercise 3–5 days/week</option>
+          <option value="very_active">Very active — hard exercise 6–7 days/week</option>
+          <option value="super_active">Super active — very hard exercise or physical job</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Goal</label>
+        <div class="goal-radio-group">
+          <label class="goal-radio-option">
+            <input type="radio" name="goals-goal" value="lose" id="goals-lose" onchange="updateGoalsPreview()">
+            <span><strong>Lose weight</strong><small>−400 kcal/day deficit</small></span>
+          </label>
+          <label class="goal-radio-option">
+            <input type="radio" name="goals-goal" value="maintain" id="goals-maintain" onchange="updateGoalsPreview()">
+            <span><strong>Maintain weight</strong><small>Eat at TDEE</small></span>
+          </label>
+          <label class="goal-radio-option">
+            <input type="radio" name="goals-goal" value="gain" id="goals-gain" onchange="updateGoalsPreview()">
+            <span><strong>Gain muscle</strong><small>+250 kcal/day surplus</small></span>
+          </label>
+        </div>
+      </div>
+
+      <div id="goals-preview" style="display:none; margin-bottom:20px;">
+        <div class="tdee-preview">
+          <div class="tdee-preview-title">Your estimated daily targets</div>
+          <div class="tdee-grid">
+            <div class="tdee-item"><span id="prev-kcal">—</span><small>kcal</small></div>
+            <div class="tdee-item"><span id="prev-protein">—</span><small>protein</small></div>
+            <div class="tdee-item"><span id="prev-carbs">—</span><small>carbs</small></div>
+            <div class="tdee-item"><span id="prev-fat">—</span><small>fat</small></div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-submit" id="goals-btn" onclick="doSaveGoals()">
+        <span id="goals-btn-text">Save goals</span>
+      </button>
+      <div class="form-msg" id="goals-msg"></div>
     </div>
   </div>
 
@@ -718,6 +864,16 @@ async function sbPost(path, body) {
   return r.json();
 }
 
+async function sbPatch(path, body) {
+  var r = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    method: 'PATCH',
+    headers: Object.assign({}, sbHeaders(), { 'Prefer': 'return=representation' }),
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) { var t = await r.text(); throw new Error(t); }
+  return r.json();
+}
+
 // ── Session ──────────────────────────────────────────────────────────────
 var currentUser = null;
 
@@ -768,7 +924,7 @@ window.doRegister = async function() {
   setLoading('reg-btn', 'reg-btn-text', true, 'Creating account…');
 
   try {
-    var rows = await sbGet('users?user_id=eq.' + userId + '&select=id,name,email,user_id,kcal_target,protein_target,carbs_target,fat_target,fiber_target');
+    var rows = await sbGet('users?user_id=eq.' + userId + '&select=id,name,email,user_id,kcal_target,protein_target,carbs_target,fat_target,fiber_target,goals_set,height_cm,weight_kg,age,sex,activity_level,goal');
     if (rows.length > 0) {
       showFormMsg('reg-msg', 'error', 'This Telegram ID is already registered. Use "Sign in" instead.');
       setLoading('reg-btn', 'reg-btn-text', false, 'Create account');
@@ -786,7 +942,7 @@ window.doRegister = async function() {
       fiber_target: 35
     });
 
-    var user = created[0] || { user_id: userId, name: name, email: email, kcal_target: kcal, protein_target: protein, carbs_target: carbs, fat_target: fat, fiber_target: 35 };
+    var user = created[0] || { user_id: userId, name: name, email: email, kcal_target: kcal, protein_target: protein, carbs_target: carbs, fat_target: fat, fiber_target: 35, goals_set: false };
     saveSession(user);
     document.getElementById('auth-panel').innerHTML =
       '<div class="success-state">'
@@ -817,7 +973,7 @@ window.doLogin = async function() {
   setLoading('login-btn', 'login-btn-text', true, 'Signing in…');
 
   try {
-    var rows = await sbGet('users?email=eq.' + encodeURIComponent(email) + '&select=id,name,email,user_id,kcal_target,protein_target,carbs_target,fat_target,fiber_target');
+    var rows = await sbGet('users?email=eq.' + encodeURIComponent(email) + '&select=id,name,email,user_id,kcal_target,protein_target,carbs_target,fat_target,fiber_target,goals_set,height_cm,weight_kg,age,sex,activity_level,goal');
     if (rows.length === 0) {
       showFormMsg('login-msg', 'error', 'No account found for that email. Register first.');
       setLoading('login-btn', 'login-btn-text', false, 'Sign in');
@@ -881,10 +1037,10 @@ async function showDashboard() {
   document.getElementById('dash-name').textContent = getGreeting(u.name);
   document.getElementById('dash-date').textContent = formatDate(new Date());
 
-  router(window.location.hash || '#today');
-  if (!window.location.hash || window.location.hash === '#today') {
-    await loadDashboardData();
-  }
+  // Auto-route new users to goals form on first login
+  var hash = (!currentUser.goals_set) ? '#goals' : (window.location.hash || '#today');
+  router(hash);
+  if (hash === '#today') await loadDashboardData();
 }
 
 function renderDashboard(meals, u) {
@@ -940,6 +1096,157 @@ function renderDashboard(meals, u) {
       + '</div>';
   }).join('');
 }
+
+// ── Goals form ────────────────────────────────────────────────────────────
+var _heightUnit = 'cm';
+var _weightUnit = 'kg';
+
+window.setHeightUnit = function(unit) {
+  var cm = parseFloat(document.getElementById('goals-height-cm').value);
+  var ft = parseFloat(document.getElementById('goals-height-ft').value) || 0;
+  var inch = parseFloat(document.getElementById('goals-height-in').value) || 0;
+  if (unit === 'ftin' && _heightUnit === 'cm' && cm) {
+    var totalIn = cm / 2.54;
+    document.getElementById('goals-height-ft').value = Math.floor(totalIn / 12);
+    document.getElementById('goals-height-in').value = Math.round(totalIn % 12);
+  } else if (unit === 'cm' && _heightUnit === 'ftin' && (ft || inch)) {
+    document.getElementById('goals-height-cm').value = Math.round((ft * 12 + inch) * 2.54);
+  }
+  _heightUnit = unit;
+  document.getElementById('height-cm-input').style.display = unit === 'cm' ? '' : 'none';
+  document.getElementById('height-ftin-input').style.display = unit === 'ftin' ? '' : 'none';
+  document.getElementById('height-cm-btn').classList.toggle('active', unit === 'cm');
+  document.getElementById('height-ftin-btn').classList.toggle('active', unit === 'ftin');
+  updateGoalsPreview();
+};
+
+window.setWeightUnit = function(unit) {
+  var kg = parseFloat(document.getElementById('goals-weight-kg').value);
+  var lbs = parseFloat(document.getElementById('goals-weight-lbs').value);
+  if (unit === 'lbs' && _weightUnit === 'kg' && kg) {
+    document.getElementById('goals-weight-lbs').value = Math.round(kg * 2.2046 * 10) / 10;
+  } else if (unit === 'kg' && _weightUnit === 'lbs' && lbs) {
+    document.getElementById('goals-weight-kg').value = Math.round(lbs / 2.2046 * 10) / 10;
+  }
+  _weightUnit = unit;
+  document.getElementById('weight-kg-input').style.display = unit === 'kg' ? '' : 'none';
+  document.getElementById('weight-lbs-input').style.display = unit === 'lbs' ? '' : 'none';
+  document.getElementById('weight-kg-btn').classList.toggle('active', unit === 'kg');
+  document.getElementById('weight-lbs-btn').classList.toggle('active', unit === 'lbs');
+  updateGoalsPreview();
+};
+
+function getGoalsValues() {
+  var sex = document.querySelector('input[name="goals-sex"]:checked');
+  var goal = document.querySelector('input[name="goals-goal"]:checked');
+  var heightCm;
+  if (_heightUnit === 'cm') {
+    heightCm = parseFloat(document.getElementById('goals-height-cm').value);
+  } else {
+    var ft = parseFloat(document.getElementById('goals-height-ft').value) || 0;
+    var inch = parseFloat(document.getElementById('goals-height-in').value) || 0;
+    heightCm = (ft * 12 + inch) * 2.54;
+  }
+  var weightKg;
+  if (_weightUnit === 'kg') {
+    weightKg = parseFloat(document.getElementById('goals-weight-kg').value);
+  } else {
+    weightKg = parseFloat(document.getElementById('goals-weight-lbs').value) / 2.2046;
+  }
+  return {
+    sex: sex ? sex.value : null,
+    age: parseInt(document.getElementById('goals-age').value, 10),
+    heightCm: heightCm,
+    weightKg: weightKg,
+    activity: document.getElementById('goals-activity').value,
+    goal: goal ? goal.value : null
+  };
+}
+
+function calcTargets(v) {
+  if (!v.sex || !v.age || !v.heightCm || !v.weightKg || !v.activity || !v.goal) return null;
+  var bmr = v.sex === 'male'
+    ? (10 * v.weightKg) + (6.25 * v.heightCm) - (5 * v.age) + 5
+    : (10 * v.weightKg) + (6.25 * v.heightCm) - (5 * v.age) - 161;
+  var mult = { sedentary: 1.20, lightly_active: 1.375, moderately_active: 1.55, very_active: 1.725, super_active: 1.90 };
+  var tdee = bmr * (mult[v.activity] || 1.375);
+  var adj = { lose: -400, maintain: 0, gain: 250 };
+  var kcal = Math.round(tdee + (adj[v.goal] || 0));
+  var protein = Math.round(v.weightKg * 2.2 * 0.9);
+  var fat = Math.round(kcal * 0.25 / 9);
+  var carbs = Math.round((kcal - protein * 4 - fat * 9) / 4);
+  return { kcal: kcal, protein: protein, fat: fat, carbs: carbs, fiber: 30 };
+}
+
+window.updateGoalsPreview = function() {
+  var t = calcTargets(getGoalsValues());
+  if (!t) return;
+  document.getElementById('prev-kcal').textContent = t.kcal;
+  document.getElementById('prev-protein').textContent = t.protein + 'g';
+  document.getElementById('prev-carbs').textContent = t.carbs + 'g';
+  document.getElementById('prev-fat').textContent = t.fat + 'g';
+  document.getElementById('goals-preview').style.display = 'block';
+};
+
+function populateGoalsForm() {
+  var u = currentUser;
+  if (!u) return;
+  if (u.sex) { var r = document.getElementById('goals-sex-' + u.sex); if (r) r.checked = true; }
+  if (u.age) document.getElementById('goals-age').value = u.age;
+  if (u.height_cm) document.getElementById('goals-height-cm').value = u.height_cm;
+  if (u.weight_kg) document.getElementById('goals-weight-kg').value = u.weight_kg;
+  if (u.activity_level) document.getElementById('goals-activity').value = u.activity_level;
+  if (u.goal) { var r2 = document.getElementById('goals-' + u.goal); if (r2) r2.checked = true; }
+  updateGoalsPreview();
+}
+
+window.doSaveGoals = async function() {
+  var v = getGoalsValues();
+  var msgEl = document.getElementById('goals-msg');
+  msgEl.className = 'form-msg';
+
+  if (!v.sex) { showFormMsg('goals-msg', 'error', 'Select your biological sex.'); return; }
+  if (!v.age || isNaN(v.age) || v.age < 10 || v.age > 120) { showFormMsg('goals-msg', 'error', 'Enter a valid age.'); return; }
+  if (!v.heightCm || isNaN(v.heightCm) || v.heightCm < 100 || v.heightCm > 250) { showFormMsg('goals-msg', 'error', 'Enter a valid height.'); return; }
+  if (!v.weightKg || isNaN(v.weightKg) || v.weightKg < 30 || v.weightKg > 300) { showFormMsg('goals-msg', 'error', 'Enter a valid weight.'); return; }
+  if (!v.activity) { showFormMsg('goals-msg', 'error', 'Select your activity level.'); return; }
+  if (!v.goal) { showFormMsg('goals-msg', 'error', 'Select a goal.'); return; }
+
+  var t = calcTargets(v);
+  setLoading('goals-btn', 'goals-btn-text', true, 'Saving…');
+
+  try {
+    var updated = await sbPatch('users?user_id=eq.' + currentUser.user_id, {
+      height_cm: Math.round(v.heightCm * 10) / 10,
+      weight_kg: Math.round(v.weightKg * 100) / 100,
+      age: v.age,
+      sex: v.sex,
+      activity_level: v.activity,
+      goal: v.goal,
+      kcal_target: t.kcal,
+      protein_target: t.protein,
+      carbs_target: t.carbs,
+      fat_target: t.fat,
+      fiber_target: t.fiber,
+      goals_set: true
+    });
+    var patch = (updated && updated[0]) ? updated[0] : {};
+    saveSession(Object.assign({}, currentUser, patch, {
+      kcal_target: t.kcal, protein_target: t.protein,
+      carbs_target: t.carbs, fat_target: t.fat, fiber_target: t.fiber,
+      goals_set: true,
+      height_cm: Math.round(v.heightCm * 10) / 10,
+      weight_kg: Math.round(v.weightKg * 100) / 100,
+      age: v.age, sex: v.sex, activity_level: v.activity, goal: v.goal
+    }));
+    setLoading('goals-btn', 'goals-btn-text', false, 'Save goals');
+    window.location.hash = '#today';
+    await loadDashboardData();
+  } catch(err) {
+    showFormMsg('goals-msg', 'error', err.message || 'Failed to save goals.');
+    setLoading('goals-btn', 'goals-btn-text', false, 'Save goals');
+  }
+};
 
 // ── Calorie chart (hand-rolled canvas, no dependencies) ────────────────────
 function renderChart(meals, u) {
@@ -1187,6 +1494,9 @@ function router(hash) {
     clearInterval(_refreshTimer);
     _refreshTimer = null;
   }
+
+  // Populate goals form whenever the section becomes active
+  if (section === 'goals') populateGoalsForm();
 }
 
 window.addEventListener('hashchange', function() {
