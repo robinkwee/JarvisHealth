@@ -73,6 +73,28 @@ function markPhotoLogged(photoMsgId: number) {
 // Pending confirmations: msg_id -> macro data
 const pending = new Map<number, MacroEstimate & { photoMsgId: number; userId: number }>();
 
+// Pending registrations: telegram user_id -> registration step
+const pendingReg = new Map<number, { step: "name" | "email"; name?: string }>();
+
+async function registerUser(userId: number, name: string, email: string) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+    method: "POST",
+    headers: { ...SB_HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal" },
+    body: JSON.stringify({ user_id: userId, name, email }),
+  });
+  if (!res.ok) throw new Error(`Registration failed: ${res.status}`);
+}
+
+async function getMealCount(userId: number): Promise<number> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/meals?user_id=eq.${userId}&select=id`,
+    { headers: { ...SB_HEADERS, "Prefer": "count=exact", "Range-Unit": "items", "Range": "0-0" } }
+  );
+  const contentRange = res.headers.get("Content-Range") ?? "";
+  const total = parseInt(contentRange.split("/")[1] ?? "0", 10);
+  return isNaN(total) ? 0 : total;
+}
+
 interface MacroEstimate {
   description: string;
   calories: number;
@@ -304,7 +326,11 @@ async function handleCallbackQuery(callbackQueryId: string, chatId: number, data
     pending.delete(msgId);
     const user = await getCachedUser(estimate.userId);
     const totals = await formatDailyTotalForUser(estimate.userId, user);
-    await sendMessage(chatId, `✅ Logged!\n\n${totals}`);
+    const mealCount = await getMealCount(estimate.userId);
+    const dashboardLine = mealCount === 1
+      ? `\n\n_See your history & streaks: ${process.env.DASHBOARD_URL || "https://your-dashboard-url.com"}_`
+      : "";
+    await sendMessage(chatId, `✅ Logged!\n\n${totals}${dashboardLine}`);
   } else if (action === "edit" && estimate) {
     await sendMessage(chatId, `✏️ *Edit macros for: ${estimate.description}*\n\nReply with corrections, e.g.:\n• \`calories 450\`\n• \`protein 35g\`\n• \`chicken breast 200g\`\n• \`all: 500 cal, 40p, 30c, 15f\``);
   } else if (action === "skip") {
@@ -316,17 +342,52 @@ async function handleCallbackQuery(callbackQueryId: string, chatId: number, data
 async function handleText(chatId: number, text: string, userId?: number) {
   const lower = text.trim().toLowerCase();
 
+  // Handle /cancel during registration
+  if (userId && pendingReg.has(userId) && lower === "/cancel") {
+    pendingReg.delete(userId);
+    await sendMessage(chatId, "No problem. Tap /start whenever you're ready.");
+    return;
+  }
+
+  // Handle registration conversation (collecting name then email)
+  if (userId && pendingReg.has(userId)) {
+    const reg = pendingReg.get(userId)!;
+
+    if (reg.step === "name") {
+      const name = text.trim();
+      pendingReg.set(userId, { step: "email", name });
+      await sendMessage(chatId, `Nice to meet you, ${name}! What's your email address?`);
+      return;
+    }
+
+    if (reg.step === "email") {
+      const email = text.trim();
+      const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      if (!emailValid) {
+        await sendMessage(chatId, "That doesn't look like an email — try again.");
+        return;
+      }
+      const name = reg.name!;
+      pendingReg.delete(userId);
+      try {
+        await registerUser(userId, name, email);
+        await sendMessage(chatId, `You're in, ${name}! 🎉\n\nNow send a food photo 📸`);
+      } catch {
+        await sendMessage(chatId, "Something went wrong saving your account. Please try /start again.");
+      }
+      return;
+    }
+  }
+
   if (lower === "/start") {
-    await sendMessage(chatId,
-      `👋 *Welcome to JarvisHealth!*\n\n` +
-      `Your Telegram User ID is: \`${userId}\`\n\n` +
-      `To get started:\n` +
-      `1. Copy your User ID above\n` +
-      `2. Visit the dashboard to register: ${process.env.DASHBOARD_URL || "https://your-dashboard-url.com"}\n` +
-      `3. Enter your name, email, and this User ID\n` +
-      `4. Then send food photos here to start tracking!\n\n` +
-      `Type /help for all commands.`
-    );
+    if (!userId) return;
+    const existing = await getCachedUser(userId);
+    if (existing) {
+      await sendMessage(chatId, `Welcome back, ${existing.name}! 👋\n\nSend a food photo to log a meal.`);
+      return;
+    }
+    pendingReg.set(userId, { step: "name" });
+    await sendMessage(chatId, `👋 *Welcome to JarvisHealth!*\n\nI'll track your meals automatically — just send food photos.\n\nWhat's your name?`);
     return;
   }
 
@@ -339,7 +400,7 @@ async function handleText(chatId: number, text: string, userId?: number) {
     if (!userId) return;
     const user = await getCachedUser(userId);
     if (!user) {
-      await sendMessage(chatId, "You're not registered yet. Visit the web app to sign up.");
+      await sendMessage(chatId, "You're not registered yet — tap /start to sign up in 30 seconds.");
       return;
     }
     await sendMessage(chatId, await formatDailyTotalForUser(userId, user));
@@ -352,8 +413,7 @@ async function handleText(chatId: number, text: string, userId?: number) {
       "📸 Send a food photo → instant macro analysis\n" +
       "✅ Tap Log it to save\n\n" +
       "Commands:\n" +
-      "/start — welcome + your Telegram User ID\n" +
-      "/whoami — show your Telegram User ID\n" +
+      "/start — register or sign in\n" +
       "/today — today's totals\n" +
       "/targets — view your daily targets\n" +
       "/help — this message"
@@ -365,7 +425,7 @@ async function handleText(chatId: number, text: string, userId?: number) {
     if (!userId) return;
     const user = await getCachedUser(userId);
     if (!user) {
-      await sendMessage(chatId, "You're not registered yet. Visit the web app to sign up.");
+      await sendMessage(chatId, "You're not registered yet — tap /start to sign up in 30 seconds.");
       return;
     }
     await sendMessage(chatId,
@@ -375,7 +435,7 @@ async function handleText(chatId: number, text: string, userId?: number) {
       `🍞 Carbs: ${user.carbs_target}g\n` +
       `🥑 Fat: ${user.fat_target}g\n` +
       `🌿 Fiber: ${user.fiber_target}g\n\n` +
-      `_Update targets at the web app → Goals_`
+      `_Update targets: ${process.env.DASHBOARD_URL || "https://your-dashboard-url.com"} → Goals_`
     );
     return;
   }
@@ -451,13 +511,7 @@ async function poll() {
         if (msg.photo) {
           const user = userId ? await getCachedUser(userId) : null;
           if (!user) {
-            await sendMessage(chatId,
-              `👋 You need to register first!\n\n` +
-              `1. Go to the dashboard: ${process.env.DASHBOARD_URL || "https://your-dashboard-url.com"}\n` +
-              `2. Click *New? Register*\n` +
-              `3. Your Telegram ID is: \`${userId}\`\n\n` +
-              `Once registered, send your food photo again!`
-            );
+            await sendMessage(chatId, "Tap /start to register first — takes 30 seconds. Then send your photo again!");
           } else {
             await handlePhoto(chatId, msg.message_id, msg.photo, userId!);
           }

@@ -58,6 +58,9 @@
       cursor: pointer;
       border: none;
       text-decoration: none;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
     }
     .nav-cta:hover { background: #5a52e0; color: white; }
 
@@ -174,9 +177,8 @@
       font-size: 13px;
     }
 
-    /* ── Demo + Register split ── */
-    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
-    @media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
+    /* ── Demo ── */
+    .demo-centered { max-width: 480px; margin: 0 auto; }
 
     /* ── Telegram Demo ── */
     .tg-wrap { }
@@ -240,20 +242,13 @@
     .macro-line strong { color: var(--green); }
     .tg-bubble-hidden { display: none; }
 
-    /* ── Register / Login ── */
+    /* ── Sign in panel ── */
     .panel {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 20px;
       padding: 36px;
     }
-    .tabs { display: flex; gap: 0; margin-bottom: 28px; border-radius: 10px; overflow: hidden; background: var(--surface2); padding: 4px; }
-    .tab {
-      flex: 1; padding: 10px; font-size: 14px; font-weight: 500;
-      border: none; background: none; color: var(--muted);
-      cursor: pointer; border-radius: 7px; transition: all 0.2s;
-    }
-    .tab.active { background: var(--accent); color: white; }
     .form-group { margin-bottom: 18px; }
     .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 7px; }
     .form-group input {
@@ -635,7 +630,7 @@
 <!-- Nav -->
 <nav>
   <div class="logo">Jarvis<span>Health</span></div>
-  <button class="nav-cta" onclick="document.getElementById('get-started').scrollIntoView({behavior:'smooth'})">Get started</button>
+  <button class="nav-cta" onclick="document.getElementById('signin-section').scrollIntoView({behavior:'smooth'})">Sign in</button>
 </nav>
 
 <!-- ── Landing (shown when not logged in) ── -->
@@ -643,130 +638,75 @@
 
   <!-- Hero -->
   <section class="hero">
-    <div class="badge">🤖 AI-powered food tracking</div>
+    <div class="badge">AI-powered food tracking</div>
     <h1>Track food with friends,<br><span class="grad">one photo at a time</span></h1>
-    <p class="hero-sub">Send a food photo to your Telegram group. JarvisHealth logs the macros instantly and keeps everyone accountable — together.</p>
+    <p class="hero-sub">Send a food photo to Telegram. JarvisHealth logs the macros instantly and keeps everyone accountable — together.</p>
     <div class="hero-actions">
-      <button class="btn-primary" onclick="document.getElementById('get-started').scrollIntoView({behavior:'smooth'})">Start tracking free</button>
-      <button class="btn-ghost" onclick="document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">See how it works</button>
+      <a class="btn-primary" href="https://t.me/RKJarvisHealthBot" target="_blank" rel="noopener">Open Telegram bot →</a>
+      <button class="btn-ghost" onclick="document.getElementById('signin-section').scrollIntoView({behavior:'smooth'})">Already tracking? Sign in</button>
     </div>
   </section>
 
   <!-- How it works -->
   <section id="how-it-works" class="steps-section">
     <p class="section-label">How it works</p>
-    <h2 class="section-title">Three steps to your<br>daily macro goals</h2>
-    <p class="section-sub">No apps to install. No manual logging. Just snap and track.</p>
+    <h2 class="section-title">Three steps,<br>one app</h2>
+    <p class="section-sub">No manual logging. Just snap and track.</p>
     <div class="steps-grid">
       <div class="step-card">
         <div class="step-num">1</div>
-        <h3>Join the group</h3>
-        <p>Ask for an invite to the JarvisHealth Telegram group — or create your own with your friends and add the bot.</p>
+        <h3>Open the bot</h3>
+        <p>Tap the button above to open <a href="https://t.me/RKJarvisHealthBot" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">@RKJarvisHealthBot</a> in Telegram and hit Start.</p>
       </div>
       <div class="step-card">
         <div class="step-num">2</div>
-        <h3>Get your Telegram ID</h3>
-        <p>Message <a href="https://t.me/RKJarvisHealthBot" target="_blank" style="color:var(--accent);text-decoration:none;">@RKJarvisHealthBot</a> and send <code>/whoami</code>. It replies with your unique ID — you'll need it to register below.</p>
+        <h3>Answer 2 questions</h3>
+        <p>The bot asks for your name and email — takes about 20 seconds. No app download, no form filling.</p>
       </div>
       <div class="step-card">
         <div class="step-num">3</div>
-        <h3>Register & log meals</h3>
-        <p>Register with your Telegram ID here. Then snap food photos in the group — the bot logs macros automatically.</p>
-      </div>
-      <div class="step-card">
-        <div class="step-num">4</div>
-        <h3>Track your progress</h3>
-        <p>Come back to this page any time to see today's totals, your macro breakdown, and every meal logged.</p>
+        <h3>Send a food photo</h3>
+        <p>Snap anything you're eating and send it to the bot. It identifies the food and logs the macros automatically.</p>
       </div>
     </div>
   </section>
 
-  <!-- Demo + Register -->
-  <section id="get-started">
+  <!-- Demo -->
+  <section id="demo-section">
     <p class="section-label">Try it</p>
-    <h2 class="section-title">See it in action,<br>then sign up</h2>
-    <p class="section-sub">Watch the bot work, then register with your Telegram ID to start logging your meals.</p>
-    <div class="split">
-      <!-- Telegram demo -->
-      <div class="tg-wrap">
-        <div class="tg-window">
-          <div class="tg-header">
-            <div class="tg-avatar">🤖</div>
-            <div>
-              <div class="tg-name">Food Logging</div>
-              <div class="tg-status">3 members</div>
-            </div>
-          </div>
-          <div class="tg-body" id="demo-chat">
-            <!-- messages injected by JS -->
+    <h2 class="section-title">See it in action</h2>
+    <p class="section-sub">Send a photo — the bot identifies the food and logs the macros in seconds.</p>
+    <div class="demo-centered">
+      <div class="tg-window">
+        <div class="tg-header">
+          <div class="tg-avatar">🤖</div>
+          <div>
+            <div class="tg-name">Food Logging</div>
+            <div class="tg-status">3 members</div>
           </div>
         </div>
-      </div>
-
-      <!-- Register / Login panel -->
-      <div class="panel" id="auth-panel">
-        <div class="tabs">
-          <button class="tab active" onclick="showTab('register')">Create account</button>
-          <button class="tab" onclick="showTab('login')">Sign in</button>
+        <div class="tg-body" id="demo-chat">
+          <!-- messages injected by JS -->
         </div>
-
-        <!-- Register form -->
-        <form id="register-form" onsubmit="return false;">
-          <div class="form-group">
-            <label>Your name</label>
-            <input type="text" id="reg-name" placeholder="Robin" autocomplete="name">
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="reg-email" placeholder="you@example.com" autocomplete="email">
-          </div>
-          <div class="form-group">
-            <label>Telegram User ID</label>
-            <input type="number" id="reg-userid" placeholder="e.g. 123456789">
-            <p class="form-hint">Message <a href="https://t.me/RKJarvisHealthBot" target="_blank" style="color:var(--accent);">@RKJarvisHealthBot</a> and send <code>/whoami</code> — it replies with your ID.</p>
-          </div>
-          <details>
-            <summary class="details-toggle">⚙️ Customize daily targets (optional)</summary>
-            <div style="margin-top:14px;">
-              <div class="targets-row">
-                <div class="form-group">
-                  <label>Calories (kcal)</label>
-                  <input type="number" id="reg-kcal" placeholder="2550">
-                </div>
-                <div class="form-group">
-                  <label>Protein (g)</label>
-                  <input type="number" id="reg-protein" placeholder="140">
-                </div>
-                <div class="form-group">
-                  <label>Carbs (g)</label>
-                  <input type="number" id="reg-carbs" placeholder="325">
-                </div>
-                <div class="form-group">
-                  <label>Fat (g)</label>
-                  <input type="number" id="reg-fat" placeholder="75">
-                </div>
-              </div>
-            </div>
-          </details>
-          <button class="btn-submit" id="reg-btn" onclick="doRegister()">
-            <span id="reg-btn-text">Create account</span>
-          </button>
-          <div class="form-msg" id="reg-msg"></div>
-        </form>
-
-        <!-- Login form -->
-        <form id="login-form" style="display:none;" onsubmit="return false;">
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
-            <p class="form-hint">The email you used when registering.</p>
-          </div>
-          <button class="btn-submit" id="login-btn" onclick="doLogin()">
-            <span id="login-btn-text">Sign in</span>
-          </button>
-          <div class="form-msg" id="login-msg"></div>
-        </form>
       </div>
+    </div>
+  </section>
+
+  <!-- Sign in -->
+  <section id="signin-section">
+    <div class="panel" id="auth-panel" style="max-width:440px;margin:0 auto;">
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:6px;">Sign in to your dashboard</h2>
+      <p style="font-size:14px;color:var(--muted);margin-bottom:24px;">New? <a href="https://t.me/RKJarvisHealthBot" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">Register via Telegram bot →</a></p>
+      <form id="login-form" onsubmit="return false;">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <button class="btn-submit" id="login-btn" onclick="doLogin()">
+          <span id="login-btn-text">Sign in</span>
+        </button>
+        <div class="form-msg" id="login-msg"></div>
+      </form>
     </div>
   </section>
 
@@ -1111,73 +1051,6 @@ function clearSession() {
   try { localStorage.removeItem('jh_user'); } catch(e) {}
 }
 
-// ── Tabs ──────────────────────────────────────────────────────────────────
-window.showTab = function(tab) {
-  document.getElementById('register-form').style.display = tab === 'register' ? '' : 'none';
-  document.getElementById('login-form').style.display = tab === 'login' ? '' : 'none';
-  document.querySelectorAll('.tab').forEach(function(t, i) {
-    t.classList.toggle('active', (tab === 'register') ? i === 0 : i === 1);
-  });
-};
-
-// ── Register ──────────────────────────────────────────────────────────────
-window.doRegister = async function() {
-  var name = document.getElementById('reg-name').value.trim();
-  var email = document.getElementById('reg-email').value.trim();
-  var userId = parseInt(document.getElementById('reg-userid').value, 10);
-  var kcal = parseInt(document.getElementById('reg-kcal').value, 10) || 2550;
-  var protein = parseInt(document.getElementById('reg-protein').value, 10) || 140;
-  var carbs = parseInt(document.getElementById('reg-carbs').value, 10) || 325;
-  var fat = parseInt(document.getElementById('reg-fat').value, 10) || 75;
-
-  var msgEl = document.getElementById('reg-msg');
-  msgEl.className = 'form-msg';
-  msgEl.style.display = 'none';
-
-  if (!name) { showFormMsg('reg-msg', 'error', 'Enter your name.'); return; }
-  if (!email || !email.includes('@')) { showFormMsg('reg-msg', 'error', 'Enter a valid email.'); return; }
-  if (!userId || isNaN(userId)) { showFormMsg('reg-msg', 'error', 'Enter your Telegram User ID. Send /whoami to the bot to get it.'); return; }
-
-  setLoading('reg-btn', 'reg-btn-text', true, 'Creating account…');
-
-  try {
-    var rows = await sbGet('users?user_id=eq.' + userId + '&select=id,name,email,user_id,kcal_target,protein_target,carbs_target,fat_target,fiber_target,goals_set,height_cm,weight_kg,age,sex,activity_level,goal');
-    if (rows.length > 0) {
-      showFormMsg('reg-msg', 'error', 'This Telegram ID is already registered. Use "Sign in" instead.');
-      setLoading('reg-btn', 'reg-btn-text', false, 'Create account');
-      return;
-    }
-
-    var created = await sbPost('users', {
-      user_id: userId,
-      name: name,
-      email: email,
-      kcal_target: kcal,
-      protein_target: protein,
-      carbs_target: carbs,
-      fat_target: fat,
-      fiber_target: 35
-    });
-
-    var user = created[0] || { user_id: userId, name: name, email: email, kcal_target: kcal, protein_target: protein, carbs_target: carbs, fat_target: fat, fiber_target: 35, goals_set: false };
-    saveSession(user);
-    document.getElementById('auth-panel').innerHTML =
-      '<div class="success-state">'
-      + '<div class="success-ring">✓</div>'
-      + '<div class="success-title">Welcome, ' + escHtml(name.split(' ')[0]) + '!</div>'
-      + '<div class="success-sub">Account created. Loading your dashboard…</div>'
-      + '<div class="success-dots"><span></span><span></span><span></span></div>'
-      + '</div>';
-    setTimeout(showDashboard, 1400);
-  } catch(err) {
-    var msg = err.message || 'Something went wrong.';
-    if (msg.includes('duplicate') || msg.includes('unique')) {
-      msg = 'This Telegram ID is already registered. Use "Sign in" instead.';
-    }
-    showFormMsg('reg-msg', 'error', msg);
-    setLoading('reg-btn', 'reg-btn-text', false, 'Create account');
-  }
-};
 
 // ── Login ──────────────────────────────────────────────────────────────────
 window.doLogin = async function() {
@@ -1192,7 +1065,7 @@ window.doLogin = async function() {
   try {
     var rows = await sbGet('users?email=eq.' + encodeURIComponent(email) + '&select=id,name,email,user_id,kcal_target,protein_target,carbs_target,fat_target,fiber_target,goals_set,height_cm,weight_kg,age,sex,activity_level,goal');
     if (rows.length === 0) {
-      showFormMsg('login-msg', 'error', 'No account found for that email. Register first.');
+      showFormMsg('login-msg', 'error', 'No account found. Register via the Telegram bot first.');
       setLoading('login-btn', 'login-btn-text', false, 'Sign in');
       return;
     }
