@@ -71,7 +71,7 @@ function markPhotoLogged(photoMsgId: number) {
 }
 
 // Pending confirmations: msg_id -> macro data
-const pending = new Map<number, MacroEstimate & { photoMsgId: number; userId: number }>();
+const pending = new Map<number, MacroEstimate & { photoMsgId: number; userId: number; source: "photo" | "text" }>();
 
 // Pending registrations: telegram user_id -> registration step
 const pendingReg = new Map<number, { step: "name" | "email"; name?: string }>();
@@ -174,6 +174,10 @@ If no food is visible, return: {"error": "No food detected"}`,
   });
 
   const text = response.content[0].type === "text" ? response.content[0].text : "";
+  return parseAnalysisResponse(text);
+}
+
+function parseAnalysisResponse(text: string): MacroEstimate | null {
   try {
     const parsed = JSON.parse(text.trim());
     if (parsed.error) return null;
@@ -185,6 +189,36 @@ If no food is visible, return: {"error": "No food detected"}`,
     }
     return null;
   }
+}
+
+async function analyzeTextFood(description: string): Promise<MacroEstimate | null> {
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 512,
+    messages: [{
+      role: "user",
+      content: `You are a nutrition analyzer. The user described a meal or food item in text.
+Estimate the nutritional content for a typical serving unless a quantity is specified.
+
+Respond ONLY in this exact JSON format (no markdown, no explanation):
+{
+  "description": "short food name with estimated portion (e.g. Big Mac meal ~950g)",
+  "calories": 850,
+  "protein_g": 32,
+  "carbs_g": 98,
+  "fat_g": 38,
+  "fiber_g": 5,
+  "confidence": "high",
+  "notes": "optional note about estimation difficulty"
+}
+
+Description format: match the photo-analysis style — short name, estimated weight/portion in parentheses.
+User input: "${description}"
+If the input is not a food description, return: {"error": "Not food"}`,
+    }],
+  });
+  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  return parseAnalysisResponse(text);
 }
 
 // --- Daily totals (reads from Supabase) ---
@@ -233,7 +267,7 @@ async function formatDailyTotalForUser(userId: number, user: any): Promise<strin
     `🌿 Fiber: ${Math.round(t.fiber)}g / ${targets.fiber}g`;
 }
 
-async function logToSupabase(userId: number, estimate: MacroEstimate, photoMsgId: number) {
+async function logToSupabase(userId: number, estimate: MacroEstimate, photoMsgId: number | null, source: string) {
   const now = new Date();
   const date = now.toISOString().split("T")[0];
   const time = now.toTimeString().split(" ")[0];
@@ -255,6 +289,7 @@ async function logToSupabase(userId: number, estimate: MacroEstimate, photoMsgId
         fat_g: estimate.fat_g,
         fiber_g: estimate.fiber_g,
         photo_msg_id: photoMsgId,
+        source,
       }),
     });
   } catch (e) {
@@ -291,7 +326,7 @@ async function handlePhoto(chatId: number, msgId: number, photos: Array<{ file_i
   if (estimate.notes) text += `\n_Note: ${estimate.notes}_\n`;
   text += `\nLog this?`;
 
-  pending.set(msgId, { ...estimate, photoMsgId: msgId, userId });
+  pending.set(msgId, { ...estimate, photoMsgId: msgId, userId, source: "photo" });
 
   const replyMarkup = {
     inline_keyboard: [[
@@ -322,7 +357,7 @@ async function handleCallbackQuery(callbackQueryId: string, chatId: number, data
       return;
     }
     markPhotoLogged(estimate.photoMsgId);
-    await logToSupabase(estimate.userId, estimate, estimate.photoMsgId);
+    await logToSupabase(estimate.userId, estimate, estimate.source === "text" ? null : estimate.photoMsgId, estimate.source);
     pending.delete(msgId);
     const user = await getCachedUser(estimate.userId);
     const totals = await formatDailyTotalForUser(estimate.userId, user);
@@ -339,7 +374,7 @@ async function handleCallbackQuery(callbackQueryId: string, chatId: number, data
   }
 }
 
-async function handleText(chatId: number, text: string, userId?: number) {
+async function handleText(chatId: number, msgId: number, text: string, userId?: number) {
   const lower = text.trim().toLowerCase();
 
   // Handle /cancel during registration
@@ -371,7 +406,7 @@ async function handleText(chatId: number, text: string, userId?: number) {
       pendingReg.delete(userId);
       try {
         await registerUser(userId, name, email);
-        await sendMessage(chatId, `You're in, ${name}! 🎉\n\nNow send a food photo 📸`);
+        await sendMessage(chatId, `You're in, ${name}! 🎉\n\n📸 Send a food photo, or\n📝 Type a meal — "big mac and fries", "2 eggs on toast"`);
       } catch {
         await sendMessage(chatId, "Something went wrong saving your account. Please try /start again.");
       }
@@ -387,7 +422,7 @@ async function handleText(chatId: number, text: string, userId?: number) {
       return;
     }
     pendingReg.set(userId, { step: "name" });
-    await sendMessage(chatId, `👋 *Welcome to JarvisHealth!*\n\nI'll track your meals automatically — just send food photos.\n\nWhat's your name?`);
+    await sendMessage(chatId, `👋 *Welcome to JarvisHealth!*\n\nI'll track your meals automatically.\n\n📸 Send a food photo, or\n📝 Type a meal — "big mac and fries", "2 eggs on toast"\n\nWhat's your name?`);
     return;
   }
 
@@ -410,6 +445,7 @@ async function handleText(chatId: number, text: string, userId?: number) {
   if (lower === "/help") {
     await sendMessage(chatId,
       "*JarvisHealth*\n\n" +
+      "📝 Type a meal — \"big mac and fries\", \"2 eggs on toast\"\n" +
       "📸 Send a food photo → instant macro analysis\n" +
       "✅ Tap Log it to save\n\n" +
       "Commands:\n" +
@@ -480,7 +516,42 @@ async function handleText(chatId: number, text: string, userId?: number) {
   }
 
   if (!edited) {
-    await sendMessage(chatId, "Send me a food photo to log it! /help for commands.");
+    if (!userId) return;
+    const user = await getCachedUser(userId);
+    if (!user) {
+      await sendMessage(chatId, "Tap /start to register first, then type your meal!");
+      return;
+    }
+    if (text.trim().length < 3) {
+      await sendMessage(chatId, "Not sure what to do with that! Try: \"2 eggs on toast\", \"big mac meal\" — or send a food photo 📸");
+      return;
+    }
+    await sendMessage(chatId, "🧠 Analyzing...");
+    let estimate: MacroEstimate | null = null;
+    try {
+      estimate = await analyzeTextFood(text);
+    } catch {
+      await sendMessage(chatId, "Something went wrong analyzing that — try a food photo instead 📸");
+      return;
+    }
+    if (!estimate) {
+      await sendMessage(chatId, "Not sure what to do with that! Try: \"2 eggs on toast\", \"big mac meal\" — or send a food photo 📸");
+      return;
+    }
+    const confidenceEmoji = estimate.confidence === "high" ? "✅" : estimate.confidence === "medium" ? "⚠️" : "❓";
+    let replyText = `${confidenceEmoji} *${estimate.description}*\n\n` +
+      `🔥 Calories: *${estimate.calories} kcal*\n💪 Protein: ${estimate.protein_g}g\n` +
+      `🍞 Carbs: ${estimate.carbs_g}g\n🥑 Fat: ${estimate.fat_g}g\n🌿 Fiber: ${estimate.fiber_g}g\n`;
+    if (estimate.notes) replyText += `\n_Note: ${estimate.notes}_\n`;
+    replyText += `\nLog this?`;
+    pending.set(msgId, { ...estimate, photoMsgId: msgId, userId, source: "text" });
+    await sendMessage(chatId, replyText, {
+      inline_keyboard: [[
+        { text: "✅ Log it", callback_data: `log:${msgId}` },
+        { text: "✏️ Edit", callback_data: `edit:${msgId}` },
+        { text: "❌ Skip", callback_data: `skip:${msgId}` },
+      ]],
+    });
   }
 }
 
@@ -516,7 +587,7 @@ async function poll() {
             await handlePhoto(chatId, msg.message_id, msg.photo, userId!);
           }
         } else if (msg.text) {
-          await handleText(chatId, msg.text, userId);
+          await handleText(chatId, msg.message_id, msg.text, userId);
         }
       }
     } catch (err) {
