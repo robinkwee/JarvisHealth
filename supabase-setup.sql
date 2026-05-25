@@ -28,6 +28,7 @@ CREATE TABLE meals (
   fat_g DECIMAL(5,1),
   fiber_g DECIMAL(5,1),
   photo_msg_id INT,
+  source TEXT DEFAULT 'photo',
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -51,3 +52,7 @@ CREATE POLICY "Allow anon update on users" ON users FOR UPDATE USING (true) WITH
 -- ALTER TABLE users ADD COLUMN IF NOT EXISTS activity_level TEXT;
 -- ALTER TABLE users ADD COLUMN IF NOT EXISTS goal TEXT;
 -- ALTER TABLE users ADD COLUMN IF NOT EXISTS goals_set BOOLEAN DEFAULT FALSE;
+
+-- Text food logging (added for text input feature)
+-- Run this if the meals table already exists:
+-- ALTER TABLE meals ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'photo';
