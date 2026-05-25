@@ -539,19 +539,27 @@ async function handleText(chatId: number, msgId: number, text: string, userId?: 
       return;
     }
     const confidenceEmoji = estimate.confidence === "high" ? "✅" : estimate.confidence === "medium" ? "⚠️" : "❓";
-    let replyText = `${confidenceEmoji} *${estimate.description}*\n\n` +
-      `🔥 Calories: *${estimate.calories} kcal*\n💪 Protein: ${estimate.protein_g}g\n` +
-      `🍞 Carbs: ${estimate.carbs_g}g\n🥑 Fat: ${estimate.fat_g}g\n🌿 Fiber: ${estimate.fiber_g}g\n`;
-    if (estimate.notes) replyText += `\n_Note: ${estimate.notes}_\n`;
-    replyText += `\nLog this?`;
+    let text = `${confidenceEmoji} *${estimate.description}*\n\n` +
+      `🔥 Calories: *${estimate.calories} kcal*\n` +
+      `💪 Protein: ${estimate.protein_g}g\n` +
+      `🍞 Carbs: ${estimate.carbs_g}g\n` +
+      `🥑 Fat: ${estimate.fat_g}g\n` +
+      `🌿 Fiber: ${estimate.fiber_g}g\n`;
+
+    if (estimate.notes) text += `\n_Note: ${estimate.notes}_\n`;
+    text += `\nLog this?`;
+
     pending.set(msgId, { ...estimate, photoMsgId: msgId, userId, source: "text" });
-    await sendMessage(chatId, replyText, {
+
+    const replyMarkup = {
       inline_keyboard: [[
         { text: "✅ Log it", callback_data: `log:${msgId}` },
         { text: "✏️ Edit", callback_data: `edit:${msgId}` },
         { text: "❌ Skip", callback_data: `skip:${msgId}` },
       ]],
-    });
+    };
+
+    await sendMessage(chatId, text, replyMarkup);
   }
 }
 
