@@ -503,7 +503,7 @@ async function handleText(chatId: number, msgId: number, text: string, userId?: 
       pending.set(msgId, estimate);
       const replyMarkup = {
         inline_keyboard: [[
-          { text: "✅ Log it", callback_data: `log:${msgId}` },
+          { text: "✅ Log it", callback_data: `log:${msgId}:edit` },
           { text: "❌ Skip", callback_data: `skip:${msgId}` },
         ]],
       };
@@ -526,18 +526,22 @@ async function handleText(chatId: number, msgId: number, text: string, userId?: 
       await sendMessage(chatId, "Not sure what to do with that! Try: \"2 eggs on toast\", \"big mac meal\" — or send a food photo 📸");
       return;
     }
+    console.log(`[DEBUG] Analyzing text: "${text.trim()}" for userId ${userId}`);
     await sendMessage(chatId, "🧠 Analyzing...");
     let estimate: MacroEstimate | null = null;
     try {
       estimate = await analyzeTextFood(text);
-    } catch {
+    } catch (err) {
+      console.error("[DEBUG] Analysis error:", err);
       await sendMessage(chatId, "Something went wrong analyzing that — try a food photo instead 📸");
       return;
     }
     if (!estimate) {
+      console.log("[DEBUG] No estimate returned");
       await sendMessage(chatId, "Not sure what to do with that! Try: \"2 eggs on toast\", \"big mac meal\" — or send a food photo 📸");
       return;
     }
+    console.log("[DEBUG] Estimate:", estimate);
     const confidenceEmoji = estimate.confidence === "high" ? "✅" : estimate.confidence === "medium" ? "⚠️" : "❓";
     let text = `${confidenceEmoji} *${estimate.description}*\n\n` +
       `🔥 Calories: *${estimate.calories} kcal*\n` +
