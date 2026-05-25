@@ -76,6 +76,11 @@ const pending = new Map<number, MacroEstimate & { photoMsgId: number; userId: nu
 // Pending registrations: telegram user_id -> registration step
 const pendingReg = new Map<number, { step: "name" | "email"; name?: string }>();
 
+// Track recently processed logs to prevent race conditions from duplicate callback queries
+const recentlyLogged = new Set<number>();
+const DEDUP_TTL = 5 * 60 * 1000; // 5 minutes
+setInterval(() => recentlyLogged.clear(), DEDUP_TTL);
+
 async function registerUser(userId: number, name: string, email: string) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
     method: "POST",
@@ -302,12 +307,8 @@ async function handlePhoto(chatId: number, msgId: number, photos: Array<{ file_i
   // Pick photo closest to 800px — enough resolution for food ID, ~60% fewer Vision tokens than 1280px
   const photo = photos.slice().sort((a, b) => Math.abs(a.width - 800) - Math.abs(b.width - 800))[0];
 
-  // Parallelize: send typing indicator while downloading
-  const [, imageBuffer] = await Promise.all([
-    sendMessage(chatId, "🔍 Analyzing your food..."),
-    downloadPhoto(photo.file_id),
-  ]);
-
+  // Download and analyze in parallel
+  const imageBuffer = await downloadPhoto(photo.file_id);
   const estimate = await analyzeFood(imageBuffer);
 
   if (!estimate) {
@@ -351,14 +352,18 @@ async function handleCallbackQuery(callbackQueryId: string, chatId: number, data
   const estimate = pending.get(msgId);
 
   if (action === "log" && estimate) {
-    if (alreadyLogged(estimate.photoMsgId)) {
+    console.log(`[LOG] photoMsgId=${estimate.photoMsgId} recentlyLogged=${recentlyLogged.has(estimate.photoMsgId)} alreadyLogged=${alreadyLogged(estimate.photoMsgId)}`);
+    // Prevent duplicate logs from concurrent callback queries
+    if (recentlyLogged.has(estimate.photoMsgId) || alreadyLogged(estimate.photoMsgId)) {
       pending.delete(msgId);
       await sendMessage(chatId, "⚠️ Already logged.");
       return;
     }
+    recentlyLogged.add(estimate.photoMsgId);
     markPhotoLogged(estimate.photoMsgId);
-    await logToSupabase(estimate.userId, estimate, estimate.source === "text" ? null : estimate.photoMsgId, estimate.source);
     pending.delete(msgId);
+    console.log(`[LOG] Logging to Supabase: ${estimate.description}`);
+    await logToSupabase(estimate.userId, estimate, estimate.source === "text" ? null : estimate.photoMsgId, estimate.source);
     const user = await getCachedUser(estimate.userId);
     const totals = await formatDailyTotalForUser(estimate.userId, user);
     const mealCount = await getMealCount(estimate.userId);
@@ -503,7 +508,7 @@ async function handleText(chatId: number, msgId: number, text: string, userId?: 
       pending.set(msgId, estimate);
       const replyMarkup = {
         inline_keyboard: [[
-          { text: "✅ Log it", callback_data: `log:${msgId}:edit` },
+          { text: "✅ Log it", callback_data: `log:${msgId}` },
           { text: "❌ Skip", callback_data: `skip:${msgId}` },
         ]],
       };
@@ -526,32 +531,30 @@ async function handleText(chatId: number, msgId: number, text: string, userId?: 
       await sendMessage(chatId, "Not sure what to do with that! Try: \"2 eggs on toast\", \"big mac meal\" — or send a food photo 📸");
       return;
     }
-    console.log(`[DEBUG] Analyzing text: "${text.trim()}" for userId ${userId}`);
-    await sendMessage(chatId, "🧠 Analyzing...");
+    console.log(`[TEXT] User ${userId} sent: "${text.trim()}"`);
     let estimate: MacroEstimate | null = null;
     try {
       estimate = await analyzeTextFood(text);
     } catch (err) {
-      console.error("[DEBUG] Analysis error:", err);
+      console.error("[TEXT] Analysis error:", err);
       await sendMessage(chatId, "Something went wrong analyzing that — try a food photo instead 📸");
       return;
     }
     if (!estimate) {
-      console.log("[DEBUG] No estimate returned");
+      console.log("[TEXT] No estimate returned for: " + text);
       await sendMessage(chatId, "Not sure what to do with that! Try: \"2 eggs on toast\", \"big mac meal\" — or send a food photo 📸");
       return;
     }
-    console.log("[DEBUG] Estimate:", estimate);
+    console.log("[TEXT] Got estimate:", JSON.stringify(estimate));
     const confidenceEmoji = estimate.confidence === "high" ? "✅" : estimate.confidence === "medium" ? "⚠️" : "❓";
-    let text = `${confidenceEmoji} *${estimate.description}*\n\n` +
+    const foodText = `${confidenceEmoji} *${estimate.description}*\n\n` +
       `🔥 Calories: *${estimate.calories} kcal*\n` +
       `💪 Protein: ${estimate.protein_g}g\n` +
       `🍞 Carbs: ${estimate.carbs_g}g\n` +
       `🥑 Fat: ${estimate.fat_g}g\n` +
       `🌿 Fiber: ${estimate.fiber_g}g\n`;
 
-    if (estimate.notes) text += `\n_Note: ${estimate.notes}_\n`;
-    text += `\nLog this?`;
+    const finalText = foodText + (estimate.notes ? `\n_Note: ${estimate.notes}_\n` : "") + `\nLog this?`;
 
     pending.set(msgId, { ...estimate, photoMsgId: msgId, userId, source: "text" });
 
@@ -563,7 +566,9 @@ async function handleText(chatId: number, msgId: number, text: string, userId?: 
       ]],
     };
 
-    await sendMessage(chatId, text, replyMarkup);
+    console.log("[TEXT] Sending message with buttons to chat " + chatId);
+    await sendMessage(chatId, finalText, replyMarkup);
+    console.log("[TEXT] Message sent");
   }
 }
 
@@ -581,6 +586,7 @@ async function poll() {
 
         if (update.callback_query) {
           const cq = update.callback_query;
+          console.log(`[CALLBACK] update_id=${update.update_id} data=${cq.data}`);
           await handleCallbackQuery(cq.id, cq.message.chat.id, cq.data);
           continue;
         }
@@ -592,6 +598,7 @@ async function poll() {
         const userId = msg.from?.id;
 
         if (msg.photo) {
+          console.log(`[PHOTO] update_id=${update.update_id} msg_id=${msg.message_id} user=${userId}`);
           const user = userId ? await getCachedUser(userId) : null;
           if (!user) {
             await sendMessage(chatId, "Tap /start to register first — takes 30 seconds. Then send your photo again!");
@@ -599,6 +606,7 @@ async function poll() {
             await handlePhoto(chatId, msg.message_id, msg.photo, userId!);
           }
         } else if (msg.text) {
+          console.log(`[TEXT] update_id=${update.update_id} user=${userId} text=${msg.text.substring(0,50)}`);
           await handleText(chatId, msg.message_id, msg.text, userId);
         }
       }
