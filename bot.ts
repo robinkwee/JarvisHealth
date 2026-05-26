@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Database } from "bun:sqlite";
+import { type MacroEstimate, parseAnalysisResponse, buildEditPrompt, buildEstimateMessage } from "./analysis";
 
 const BOT_TOKEN = process.env.BOT_TOKEN!;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY!;
@@ -133,17 +134,6 @@ function unmarkPhotoLogged(photoMsgId: number) {
   db.prepare(`DELETE FROM logged_photos WHERE photo_msg_id = ?`).run(photoMsgId);
 }
 
-interface MacroEstimate {
-  description: string;
-  calories: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
-  fiber_g: number;
-  confidence: string;
-  notes?: string;
-}
-
 // --- Telegram helpers ---
 async function tgGet(method: string, params: Record<string, unknown> = {}) {
   const url = new URL(`${API}/${method}`);
@@ -213,20 +203,6 @@ If no food is visible, return: {"error": "No food detected"}`,
 
   const text = response.content[0].type === "text" ? response.content[0].text : "";
   return parseAnalysisResponse(text);
-}
-
-function parseAnalysisResponse(text: string): MacroEstimate | null {
-  try {
-    const parsed = JSON.parse(text.trim());
-    if (parsed.error) return null;
-    return parsed as MacroEstimate;
-  } catch {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (match) {
-      try { return JSON.parse(match[0]) as MacroEstimate; } catch { }
-    }
-    return null;
-  }
 }
 
 async function analyzeTextFood(description: string): Promise<MacroEstimate | null> {
@@ -349,16 +325,7 @@ async function handlePhoto(chatId: number, msgId: number, photos: Array<{ file_i
     return;
   }
 
-  const confidenceEmoji = estimate.confidence === "high" ? "✅" : estimate.confidence === "medium" ? "⚠️" : "❓";
-  let text = `${confidenceEmoji} *${estimate.description}*\n\n` +
-    `🔥 Calories: *${estimate.calories} kcal*\n` +
-    `💪 Protein: ${estimate.protein_g}g\n` +
-    `🍞 Carbs: ${estimate.carbs_g}g\n` +
-    `🥑 Fat: ${estimate.fat_g}g\n` +
-    `🌿 Fiber: ${estimate.fiber_g}g\n`;
-
-  if (estimate.notes) text += `\n_Note: ${estimate.notes}_\n`;
-  text += `\nLog this?`;
+  const text = buildEstimateMessage(estimate);
 
   pending.set(msgId, { ...estimate, photoMsgId: msgId, userId, source: "photo" });
 
@@ -431,7 +398,7 @@ async function handleCallbackQuery(callbackQueryId: string, chatId: number, data
     await sendMessage(chatId, `✅ Logged!\n\n${totals}${dashboardLine}`);
   } else if (action === "edit" && estimate) {
     pendingEdit.set(estimate.userId, msgId);
-    await sendMessage(chatId, `✏️ *What is it?*\n\nDescribe the food in plain English and I'll re-estimate.\n\nExamples:\n• \`egg roll, not veggie roll\`\n• \`grilled chicken breast, ~200g\`\n• \`bowl of pho with brisket\``);
+    await sendMessage(chatId, buildEditPrompt(estimate.description));
   } else if (action === "skip") {
     pending.delete(msgId);
     await sendMessage(chatId, "Skipped.");
@@ -478,15 +445,7 @@ async function handleText(chatId: number, msgId: number, text: string, userId?: 
         return;
       }
       pending.set(editMsgId, { ...estimate, photoMsgId: prev.photoMsgId, userId: prev.userId, source: prev.source });
-      const confidenceEmoji = estimate.confidence === "high" ? "✅" : estimate.confidence === "medium" ? "⚠️" : "❓";
-      const updatedText = `${confidenceEmoji} *${estimate.description}* _(updated)_\n\n` +
-        `🔥 Calories: *${estimate.calories} kcal*\n` +
-        `💪 Protein: ${estimate.protein_g}g\n` +
-        `🍞 Carbs: ${estimate.carbs_g}g\n` +
-        `🥑 Fat: ${estimate.fat_g}g\n` +
-        `🌿 Fiber: ${estimate.fiber_g}g\n` +
-        (estimate.notes ? `\n_Note: ${estimate.notes}_\n` : "") +
-        `\nLog this?`;
+      const updatedText = buildEstimateMessage(estimate, " _(updated)_");
       const replyMarkup = {
         inline_keyboard: [[
           { text: "✅ Log it", callback_data: `log:${editMsgId}` },
@@ -645,15 +604,7 @@ async function handleText(chatId: number, msgId: number, text: string, userId?: 
     return;
   }
   console.log("[TEXT] Got estimate:", JSON.stringify(estimate));
-  const confidenceEmoji = estimate.confidence === "high" ? "✅" : estimate.confidence === "medium" ? "⚠️" : "❓";
-  const foodText = `${confidenceEmoji} *${estimate.description}*\n\n` +
-    `🔥 Calories: *${estimate.calories} kcal*\n` +
-    `💪 Protein: ${estimate.protein_g}g\n` +
-    `🍞 Carbs: ${estimate.carbs_g}g\n` +
-    `🥑 Fat: ${estimate.fat_g}g\n` +
-    `🌿 Fiber: ${estimate.fiber_g}g\n`;
-
-  const finalText = foodText + (estimate.notes ? `\n_Note: ${estimate.notes}_\n` : "") + `\nLog this?`;
+  const finalText = buildEstimateMessage(estimate);
 
   pending.set(msgId, { ...estimate, photoMsgId: msgId, userId, source: "text" });
 
