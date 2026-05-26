@@ -68,6 +68,7 @@ bun run dev
 |---|---|
 | Send a photo | Analyze food and prompt to log |
 | `/today` or `/t` | Show today's macro totals |
+| `/undo` | Remove your last logged meal (with confirmation) |
 | `/targets` | Show daily targets |
 | `/set calories 1800` | Update a target (calories/protein/carbs/fat) |
 | `/help` | Show help |
