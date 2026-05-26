@@ -24,7 +24,7 @@ export function parseAnalysisResponse(text: string): MacroEstimate | null {
 }
 
 export function buildEditPrompt(description: string): string {
-  return `✏️ *Editing: ${description}*\n\nWhat did you actually eat? Describe it in plain English:\n\n• \`grilled chicken breast, 200g\`\n• \`bowl of pho with beef brisket\`\n• \`large caesar salad with croutons\``;
+  return `✏️ *Editing: ${description}*\n\nDescribe what you had and I'll re-estimate:\n\n• \`Big Mac + medium fries\`\n• \`grilled salmon, 150g\`\n• \`chicken tikka masala with rice\``;
 }
 
 export function buildEstimateMessage(estimate: MacroEstimate, suffix = ""): string {
