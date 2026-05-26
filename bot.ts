@@ -100,6 +100,36 @@ async function getMealCount(userId: number): Promise<number> {
   return isNaN(total) ? 0 : total;
 }
 
+async function getLatestMeal(userId: number) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/meals?user_id=eq.${userId}&select=id,description,calories,protein_g,carbs_g,fat_g,fiber_g,date,time,photo_msg_id&order=date.desc,time.desc&limit=1`,
+    { headers: SB_HEADERS }
+  );
+  const rows = await res.json() as any[];
+  return rows[0] ?? null;
+}
+
+async function getMealById(mealId: number) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/meals?id=eq.${mealId}&select=id,description,photo_msg_id,user_id`,
+    { headers: SB_HEADERS }
+  );
+  const rows = await res.json() as any[];
+  return rows[0] ?? null;
+}
+
+async function deleteMeal(mealId: number): Promise<boolean> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/meals?id=eq.${mealId}`, {
+    method: "DELETE",
+    headers: SB_HEADERS,
+  });
+  return res.ok;
+}
+
+function unmarkPhotoLogged(photoMsgId: number) {
+  db.prepare(`DELETE FROM logged_photos WHERE photo_msg_id = ?`).run(photoMsgId);
+}
+
 interface MacroEstimate {
   description: string;
   calories: number;
@@ -340,7 +370,7 @@ async function handlePhoto(chatId: number, msgId: number, photos: Array<{ file_i
   await sendMessage(chatId, text, replyMarkup);
 }
 
-async function handleCallbackQuery(callbackQueryId: string, chatId: number, data: string) {
+async function handleCallbackQuery(callbackQueryId: string, chatId: number, data: string, fromUserId?: number) {
   await fetch(`${API}/answerCallbackQuery`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -349,6 +379,31 @@ async function handleCallbackQuery(callbackQueryId: string, chatId: number, data
 
   const [action, msgIdStr] = data.split(":");
   const msgId = parseInt(msgIdStr);
+
+  if (action === "undo") {
+    const meal = await getMealById(msgId);
+    if (!meal) {
+      await sendMessage(chatId, "Meal not found — already removed?");
+      return;
+    }
+    if (fromUserId && meal.user_id !== fromUserId) {
+      await sendMessage(chatId, "That's not your meal to remove.");
+      return;
+    }
+    const ok = await deleteMeal(msgId);
+    if (!ok) {
+      await sendMessage(chatId, "❌ Couldn't remove that meal. Try again?");
+      return;
+    }
+    if (meal.photo_msg_id) unmarkPhotoLogged(meal.photo_msg_id);
+    await sendMessage(chatId, `🗑️ Removed: *${meal.description}*`);
+    return;
+  }
+  if (action === "cancelundo") {
+    await sendMessage(chatId, "Keeping that meal.");
+    return;
+  }
+
   const estimate = pending.get(msgId);
 
   if (action === "log" && estimate) {
@@ -447,6 +502,34 @@ async function handleText(chatId: number, msgId: number, text: string, userId?: 
     return;
   }
 
+  if (lower === "/undo") {
+    if (!userId) return;
+    const user = await getCachedUser(userId);
+    if (!user) {
+      await sendMessage(chatId, "You're not registered yet — tap /start to sign up in 30 seconds.");
+      return;
+    }
+    const meal = await getLatestMeal(userId);
+    if (!meal) {
+      await sendMessage(chatId, "No meals to undo.");
+      return;
+    }
+    const replyMarkup = {
+      inline_keyboard: [[
+        { text: "🗑️ Remove it", callback_data: `undo:${meal.id}` },
+        { text: "❌ Keep", callback_data: `cancelundo:${meal.id}` },
+      ]],
+    };
+    await sendMessage(chatId,
+      `Remove last meal?\n\n` +
+      `*${meal.description}*\n` +
+      `🔥 ${Math.round(meal.calories)} kcal | 💪 ${meal.protein_g}g | 🍞 ${meal.carbs_g}g | 🥑 ${meal.fat_g}g\n` +
+      `_${meal.date} at ${meal.time}_`,
+      replyMarkup
+    );
+    return;
+  }
+
   if (lower === "/help") {
     await sendMessage(chatId,
       "*JarvisHealth*\n\n" +
@@ -456,6 +539,7 @@ async function handleText(chatId: number, msgId: number, text: string, userId?: 
       "Commands:\n" +
       "/start — register or sign in\n" +
       "/today — today's totals\n" +
+      "/undo — remove your last logged meal\n" +
       "/targets — view your daily targets\n" +
       "/help — this message"
     );
@@ -587,7 +671,7 @@ async function poll() {
         if (update.callback_query) {
           const cq = update.callback_query;
           console.log(`[CALLBACK] update_id=${update.update_id} data=${cq.data}`);
-          await handleCallbackQuery(cq.id, cq.message.chat.id, cq.data);
+          await handleCallbackQuery(cq.id, cq.message.chat.id, cq.data, cq.from?.id);
           continue;
         }
 

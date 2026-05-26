@@ -42,6 +42,7 @@ CREATE POLICY "Allow anon insert on meals" ON meals FOR INSERT WITH CHECK (true)
 CREATE POLICY "Allow anon select on users" ON users FOR SELECT USING (true);
 CREATE POLICY "Allow anon select on meals" ON meals FOR SELECT USING (true);
 CREATE POLICY "Allow anon update on users" ON users FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon delete on meals" ON meals FOR DELETE USING (true);
 
 -- Body stats columns (added for goals form)
 -- Run these ALTER TABLEs separately if the table already exists:
