@@ -73,6 +73,9 @@ function markPhotoLogged(photoMsgId: number) {
 // Pending confirmations: msg_id -> macro data
 const pending = new Map<number, MacroEstimate & { photoMsgId: number; userId: number; source: "photo" | "text" }>();
 
+// Pending edits: telegram user_id -> msgId of the pending estimate being re-described
+const pendingEdit = new Map<number, number>();
+
 // Pending registrations: telegram user_id -> registration step
 const pendingReg = new Map<number, { step: "name" | "email"; name?: string }>();
 
@@ -372,7 +375,8 @@ async function handleCallbackQuery(callbackQueryId: string, chatId: number, data
       : "";
     await sendMessage(chatId, `✅ Logged!\n\n${totals}${dashboardLine}`);
   } else if (action === "edit" && estimate) {
-    await sendMessage(chatId, `✏️ *Edit macros for: ${estimate.description}*\n\nReply with corrections, e.g.:\n• \`calories 450\`\n• \`protein 35g\`\n• \`chicken breast 200g\`\n• \`all: 500 cal, 40p, 30c, 15f\``);
+    pendingEdit.set(estimate.userId, msgId);
+    await sendMessage(chatId, `✏️ *What is it?*\n\nDescribe the food in plain English and I'll re-estimate.\n\nExamples:\n• \`egg roll, not veggie roll\`\n• \`grilled chicken breast, ~200g\`\n• \`bowl of pho with brisket\``);
   } else if (action === "skip") {
     pending.delete(msgId);
     await sendMessage(chatId, "Skipped.");
@@ -387,6 +391,57 @@ async function handleText(chatId: number, msgId: number, text: string, userId?: 
     pendingReg.delete(userId);
     await sendMessage(chatId, "No problem. Tap /start whenever you're ready.");
     return;
+  }
+
+  // Handle /cancel during edit
+  if (userId && pendingEdit.has(userId) && lower === "/cancel") {
+    pendingEdit.delete(userId);
+    await sendMessage(chatId, "Edit cancelled — the original estimate still stands.");
+    return;
+  }
+
+  // If user is editing a pending estimate, re-analyze from their new description
+  if (userId && pendingEdit.has(userId) && !text.trim().startsWith("/")) {
+    const editMsgId = pendingEdit.get(userId)!;
+    const prev = pending.get(editMsgId);
+    if (!prev) {
+      pendingEdit.delete(userId);
+    } else {
+      pendingEdit.delete(userId);
+      let estimate: MacroEstimate | null = null;
+      try {
+        estimate = await analyzeTextFood(text);
+      } catch (err) {
+        console.error("[EDIT] Re-analysis error:", err);
+        await sendMessage(chatId, "Something went wrong re-analyzing — try describing it again.");
+        pendingEdit.set(userId, editMsgId);
+        return;
+      }
+      if (!estimate) {
+        await sendMessage(chatId, "Hmm, I couldn't make sense of that. Try again or /cancel.");
+        pendingEdit.set(userId, editMsgId);
+        return;
+      }
+      pending.set(editMsgId, { ...estimate, photoMsgId: prev.photoMsgId, userId: prev.userId, source: prev.source });
+      const confidenceEmoji = estimate.confidence === "high" ? "✅" : estimate.confidence === "medium" ? "⚠️" : "❓";
+      const updatedText = `${confidenceEmoji} *${estimate.description}* _(updated)_\n\n` +
+        `🔥 Calories: *${estimate.calories} kcal*\n` +
+        `💪 Protein: ${estimate.protein_g}g\n` +
+        `🍞 Carbs: ${estimate.carbs_g}g\n` +
+        `🥑 Fat: ${estimate.fat_g}g\n` +
+        `🌿 Fiber: ${estimate.fiber_g}g\n` +
+        (estimate.notes ? `\n_Note: ${estimate.notes}_\n` : "") +
+        `\nLog this?`;
+      const replyMarkup = {
+        inline_keyboard: [[
+          { text: "✅ Log it", callback_data: `log:${editMsgId}` },
+          { text: "✏️ Edit again", callback_data: `edit:${editMsgId}` },
+          { text: "❌ Skip", callback_data: `skip:${editMsgId}` },
+        ]],
+      };
+      await sendMessage(chatId, updatedText, replyMarkup);
+      return;
+    }
   }
 
   // Handle registration conversation (collecting name then email)
@@ -481,95 +536,54 @@ async function handleText(chatId: number, msgId: number, text: string, userId?: 
     return;
   }
 
-  // Check if editing a pending estimate
-  let edited = false;
-  for (const [msgId, estimate] of pending.entries()) {
-    const calMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:cal(?:ories?)?|kcal)/i);
-    const proteinMatch = text.match(/(?:protein\s+)?(\d+(?:\.\d+)?)\s*g?\s*(?:protein)/i) || text.match(/protein\s+(\d+(?:\.\d+)?)/i);
-    const carbsMatch = text.match(/(?:carbs?\s+)?(\d+(?:\.\d+)?)\s*g?\s*(?:carbs?)/i) || text.match(/carbs?\s+(\d+(?:\.\d+)?)/i);
-    const fatMatch = text.match(/(?:fat\s+)?(\d+(?:\.\d+)?)\s*g?\s*(?:fat)/i) || text.match(/fat\s+(\d+(?:\.\d+)?)/i);
-    const allMatch = text.match(/all:\s*(\d+)\s*cal[,\s]+(\d+)p[,\s]+(\d+)c[,\s]+(\d+)f/i);
-
-    if (allMatch) {
-      estimate.calories = parseInt(allMatch[1]);
-      estimate.protein_g = parseInt(allMatch[2]);
-      estimate.carbs_g = parseInt(allMatch[3]);
-      estimate.fat_g = parseInt(allMatch[4]);
-      edited = true;
-    } else {
-      if (calMatch) estimate.calories = parseFloat(calMatch[1]);
-      if (proteinMatch) estimate.protein_g = parseFloat(proteinMatch[1]);
-      if (carbsMatch) estimate.carbs_g = parseFloat(carbsMatch[1]);
-      if (fatMatch) estimate.fat_g = parseFloat(fatMatch[1]);
-      if (calMatch || proteinMatch || carbsMatch || fatMatch) edited = true;
-    }
-
-    if (edited) {
-      pending.set(msgId, estimate);
-      const replyMarkup = {
-        inline_keyboard: [[
-          { text: "✅ Log it", callback_data: `log:${msgId}` },
-          { text: "❌ Skip", callback_data: `skip:${msgId}` },
-        ]],
-      };
-      await sendMessage(chatId,
-        `Updated!\n🔥 ${estimate.calories} kcal | 💪 ${estimate.protein_g}g | 🍞 ${estimate.carbs_g}g | 🥑 ${estimate.fat_g}g\n\nLog it?`,
-        replyMarkup
-      );
-      break;
-    }
+  if (!userId) return;
+  const user = await getCachedUser(userId);
+  if (!user) {
+    await sendMessage(chatId, "Tap /start to register first, then type your meal!");
+    return;
   }
-
-  if (!edited) {
-    if (!userId) return;
-    const user = await getCachedUser(userId);
-    if (!user) {
-      await sendMessage(chatId, "Tap /start to register first, then type your meal!");
-      return;
-    }
-    if (text.trim().length < 3) {
-      await sendMessage(chatId, "Not sure what to do with that! Try: \"2 eggs on toast\", \"big mac meal\" — or send a food photo 📸");
-      return;
-    }
-    console.log(`[TEXT] User ${userId} sent: "${text.trim()}"`);
-    let estimate: MacroEstimate | null = null;
-    try {
-      estimate = await analyzeTextFood(text);
-    } catch (err) {
-      console.error("[TEXT] Analysis error:", err);
-      await sendMessage(chatId, "Something went wrong analyzing that — try a food photo instead 📸");
-      return;
-    }
-    if (!estimate) {
-      console.log("[TEXT] No estimate returned for: " + text);
-      await sendMessage(chatId, "Not sure what to do with that! Try: \"2 eggs on toast\", \"big mac meal\" — or send a food photo 📸");
-      return;
-    }
-    console.log("[TEXT] Got estimate:", JSON.stringify(estimate));
-    const confidenceEmoji = estimate.confidence === "high" ? "✅" : estimate.confidence === "medium" ? "⚠️" : "❓";
-    const foodText = `${confidenceEmoji} *${estimate.description}*\n\n` +
-      `🔥 Calories: *${estimate.calories} kcal*\n` +
-      `💪 Protein: ${estimate.protein_g}g\n` +
-      `🍞 Carbs: ${estimate.carbs_g}g\n` +
-      `🥑 Fat: ${estimate.fat_g}g\n` +
-      `🌿 Fiber: ${estimate.fiber_g}g\n`;
-
-    const finalText = foodText + (estimate.notes ? `\n_Note: ${estimate.notes}_\n` : "") + `\nLog this?`;
-
-    pending.set(msgId, { ...estimate, photoMsgId: msgId, userId, source: "text" });
-
-    const replyMarkup = {
-      inline_keyboard: [[
-        { text: "✅ Log it", callback_data: `log:${msgId}` },
-        { text: "✏️ Edit", callback_data: `edit:${msgId}` },
-        { text: "❌ Skip", callback_data: `skip:${msgId}` },
-      ]],
-    };
-
-    console.log("[TEXT] Sending message with buttons to chat " + chatId);
-    await sendMessage(chatId, finalText, replyMarkup);
-    console.log("[TEXT] Message sent");
+  if (text.trim().length < 3) {
+    await sendMessage(chatId, "Not sure what to do with that! Try: \"2 eggs on toast\", \"big mac meal\" — or send a food photo 📸");
+    return;
   }
+  console.log(`[TEXT] User ${userId} sent: "${text.trim()}"`);
+  let estimate: MacroEstimate | null = null;
+  try {
+    estimate = await analyzeTextFood(text);
+  } catch (err) {
+    console.error("[TEXT] Analysis error:", err);
+    await sendMessage(chatId, "Something went wrong analyzing that — try a food photo instead 📸");
+    return;
+  }
+  if (!estimate) {
+    console.log("[TEXT] No estimate returned for: " + text);
+    await sendMessage(chatId, "Not sure what to do with that! Try: \"2 eggs on toast\", \"big mac meal\" — or send a food photo 📸");
+    return;
+  }
+  console.log("[TEXT] Got estimate:", JSON.stringify(estimate));
+  const confidenceEmoji = estimate.confidence === "high" ? "✅" : estimate.confidence === "medium" ? "⚠️" : "❓";
+  const foodText = `${confidenceEmoji} *${estimate.description}*\n\n` +
+    `🔥 Calories: *${estimate.calories} kcal*\n` +
+    `💪 Protein: ${estimate.protein_g}g\n` +
+    `🍞 Carbs: ${estimate.carbs_g}g\n` +
+    `🥑 Fat: ${estimate.fat_g}g\n` +
+    `🌿 Fiber: ${estimate.fiber_g}g\n`;
+
+  const finalText = foodText + (estimate.notes ? `\n_Note: ${estimate.notes}_\n` : "") + `\nLog this?`;
+
+  pending.set(msgId, { ...estimate, photoMsgId: msgId, userId, source: "text" });
+
+  const replyMarkup = {
+    inline_keyboard: [[
+      { text: "✅ Log it", callback_data: `log:${msgId}` },
+      { text: "✏️ Edit", callback_data: `edit:${msgId}` },
+      { text: "❌ Skip", callback_data: `skip:${msgId}` },
+    ]],
+  };
+
+  console.log("[TEXT] Sending message with buttons to chat " + chatId);
+  await sendMessage(chatId, finalText, replyMarkup);
+  console.log("[TEXT] Message sent");
 }
 
 // --- Main polling loop ---
