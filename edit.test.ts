@@ -72,9 +72,9 @@ describe("buildEditPrompt", () => {
     expect(prompt).toContain("plain cabbage (~100g)");
   });
 
-  test("prompts user to describe in plain English", () => {
+  test("prompts user to re-describe the food", () => {
     const prompt = buildEditPrompt("plain cabbage (~100g)");
-    expect(prompt.toLowerCase()).toContain("plain english");
+    expect(prompt.toLowerCase()).toContain("re-estimate");
   });
 
   test("shows food description examples (not macro corrections)", () => {
@@ -82,7 +82,7 @@ describe("buildEditPrompt", () => {
     // Should contain food names, not "calories" / "protein" style corrections
     expect(prompt).not.toMatch(/calories \d+/i);
     expect(prompt).not.toMatch(/protein \d+g/i);
-    expect(prompt).toContain("grilled chicken breast");
+    expect(prompt).toContain("grilled salmon");
   });
 
   test("shows the Edit heading with original description", () => {
